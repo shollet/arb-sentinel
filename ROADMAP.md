@@ -156,6 +156,17 @@ This list is **not exhaustive** and will evolve. The point is to make the
 > Latest decisions at the top. Significant decisions get a dedicated ADR in
 > `docs/adr/` when written.
 
+### 2026-05-23 — Separate POCs, tests, and examples
+
+- **Decision**: POCs validating design decisions live as executable Python
+  scripts in `examples/` and are referenced from documentation. They are
+  not part of the test suite (`tests/`).
+- **Rationale**: tests enforce invariants and prevent regression. POCs
+  explore approaches before committing to them. Examples demonstrate usage.
+  Conflating them creates noise: POCs would fail in CI when models change
+  intentionally, and tests would become bloated with non-essential scenarios.
+  Each artifact has a distinct audience and lifecycle.
+
 ### 2026-05-23 — CI pipeline with SHA-pinned actions
 
 - **Decision**: GitHub Actions workflow runs lint (ruff) and tests (pytest)
