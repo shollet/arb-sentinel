@@ -156,6 +156,18 @@ This list is **not exhaustive** and will evolve. The point is to make the
 > Latest decisions at the top. Significant decisions get a dedicated ADR in
 > `docs/adr/` when written.
 
+### 2026-05-23 — Spec-driven design documents under docs/design/
+
+- **Decision**: significant business logic (math, algorithms, key data flows)
+  is specified in a design document under `docs/design/` before implementation.
+  Each document follows a spec-driven format: Goal, Vocabulary, Invariants,
+  Architecture, API, Worked Example, Out of Scope, References, Status.
+- **Rationale**: in a financial domain, the math must be auditable by
+  non-developers (actuaries, analysts, compliance). Writing the spec first
+  also surfaces edge cases and naming issues before they become code debt.
+  References to academic and industry sources establish credibility and
+  enable independent verification.
+
 ### 2026-05-23 — Separate POCs, tests, and examples
 
 - **Decision**: POCs validating design decisions live as executable Python
