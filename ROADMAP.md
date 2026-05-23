@@ -101,7 +101,7 @@ Dependencies (managed by `uv`): `httpx`, `pydantic`, `polars`, `pytest`,
 ### Definition of Done
 
 - [x] Repository initialized with `uv` and proper structure
-- [ ] CI pipeline running (lint + tests on PR)
+- [x] CI pipeline running (lint + tests on PR)
 - [ ] Arbitrage math implemented with property-based tests
 - [ ] Script pulls tennis odds from The Odds API
 - [ ] Quotes validated through Pydantic models
@@ -135,6 +135,9 @@ At the end of Iteration 0, we answer:
 
 | Tool / Practice | Signal that will trigger introduction |
 |-----------------|---------------------------------------|
+| **CI matrix testing** (multiple Python versions) | Project becomes a library others depend on, or we need to test backward compatibility |
+| **CI badge in README** | Repository gains visibility / external contributors who benefit from quick status check |
+| **Dependabot or Renovatebot** (automated dependency updates) | Manual SHA bumps become tedious as actions and Python deps grow; need structured update PRs |
 | **CHANGELOG.md** (with `git-cliff`) | First tagged version, or first external contributor / user |
 | **Claude Code** (autonomous agent) | Codebase grows beyond manual maintenance; need for multi-file refactors |
 | **Persistent storage** (SQLite then Postgres if needed) | Manual re-running becomes wasteful; need patterns over time |
@@ -153,6 +156,27 @@ This list is **not exhaustive** and will evolve. The point is to make the
 > Latest decisions at the top. Significant decisions get a dedicated ADR in
 > `docs/adr/` when written.
 
+### 2026-05-23 — CI pipeline with SHA-pinned actions
+
+- **Decision**: GitHub Actions workflow runs lint (ruff) and tests (pytest)
+  on push and PR to main. Single Python version (3.12) for now. Third-party
+  actions pinned by commit SHA with version comments, not by tag.
+- **Rationale**: SHA pinning protects against supply chain attacks
+  (re-tagging, compromised orgs like the March 2026 Trivy incident). SHAs
+  were verified against the GitHub API at addition time. At work, we'd rely
+  on Nexus as a proxy for upstream protection, but for this public repo
+  without a proxy, SHA pinning becomes the primary defense.
+
+### 2026-05-23 — Smoke tests as canary, no __init__.py in tests/
+
+- **Decision**: three smoke tests verify the package imports, exposes its
+  main entry point, and can load its runtime dependencies. No __init__.py
+  in the tests/ directory.
+- **Rationale**: smoke tests catch the cheapest class of bugs (import
+  errors, broken entry points) before any business logic runs. Modern
+  pytest (2026) discovers tests without requiring __init__.py — including
+  it would be legacy boilerplate without functional value.
+
 ### 2026-05-23 — Defer Claude Code introduction to learn the stack first
 
 - **Decision**: continue working manually with VS Code + bash for Iteration 0,
@@ -166,8 +190,8 @@ This list is **not exhaustive** and will evolve. The point is to make the
 
 ### 2026-05-23 — Minimalist README over showcase README
 
-- **Decision**: keep README.md sober and focused on essentials (tagline, status,
-  quick start, dev commands, link to ROADMAP). No badges, no marketing.
+- **Decision**: keep README.md sober and focused on essentials (tagline,
+  status, quick start, dev commands, link to ROADMAP). No badges, no marketing.
 - **Rationale**: the ROADMAP carries the showcase. The README is a functional
   entry point. Duplication would dilute both. Visitors who want depth click
   through to ROADMAP; visitors who want quick context get it instantly.
