@@ -46,8 +46,33 @@ def total_implied_probability(quotes: Iterable[Quote]) -> Decimal:
     the sum on a single bookmaker is typically 1.02 to 1.10. When the
     sum across the best quotes from different bookmakers drops below 1,
     an arbitrage opportunity exists.
+
+    Returns Decimal(0) for an empty collection — the natural identity for
+    sums. Callers that require non-empty inputs should validate upstream.
     """
     return sum(
         (implied_probability(quote.decimal_odds) for quote in quotes),
         start=Decimal(0),
     )
+
+
+def is_arbitrage_opportunity(event: Event) -> bool:
+    """Whether this event presents an arbitrage opportunity.
+
+    An arbitrage exists when, picking the best quote available for each
+    outcome across all bookmakers, the sum of implied probabilities falls
+    strictly below 1.
+    """
+    best = best_quote_per_outcome(event)
+    return total_implied_probability(best.values()) < Decimal(1)
+
+
+def bookmaker_overround(event: Event) -> Decimal:
+    """The margin built into the event's best quotes, as a decimal.
+
+    The overround is the amount by which the sum of implied probabilities
+    exceeds 1. A typical single-bookmaker market has an overround of 0.02
+    to 0.10. A negative overround indicates an arbitrage opportunity.
+    """
+    best = best_quote_per_outcome(event)
+    return total_implied_probability(best.values()) - Decimal(1)

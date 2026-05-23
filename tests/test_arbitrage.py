@@ -13,7 +13,9 @@ from hypothesis import strategies as st
 
 from arb_sentinel.arbitrage import (
     best_quote_per_outcome,
+    bookmaker_overround,
     implied_probability,
+    is_arbitrage_opportunity,
     total_implied_probability,
 )
 from arb_sentinel.models import Bookmaker, Event, Outcome, Quote
@@ -218,3 +220,77 @@ class TestTotalImpliedProbability:
         total = total_implied_probability(best_quotes)
 
         assert Decimal("1.0024") < total < Decimal("1.0026")
+
+
+class TestIsArbitrageOpportunity:
+    """Verify invariant I2: arbitrage exists if and only if T < 1 (strict)."""
+
+    def test_normal_market_is_not_arbitrage(self) -> None:
+        """A typical single-bookmaker market with overround is not arbitrage."""
+        event = _build_two_outcome_event(
+            federer_quotes=[("Pinnacle", "1.91")],
+            nadal_quotes=[("Pinnacle", "1.91")],
+        )
+
+        assert is_arbitrage_opportunity(event) is False
+
+    def test_perfectly_fair_market_is_not_arbitrage(self) -> None:
+        """At T = 1.0 exactly, the market is fair but not arbitrage (strict inequality)."""
+        event = _build_two_outcome_event(
+            federer_quotes=[("Pinnacle", "2.00")],
+            nadal_quotes=[("Pinnacle", "2.00")],
+        )
+
+        assert is_arbitrage_opportunity(event) is False
+
+    def test_arbitrage_market_returns_true(self) -> None:
+        """A market with T < 1 across best quotes returns True."""
+        event = _build_two_outcome_event(
+            federer_quotes=[("Pinnacle", "2.10")],
+            nadal_quotes=[("Bet365", "2.00")],
+        )
+
+        assert is_arbitrage_opportunity(event) is True
+
+    def test_worked_example_is_not_arbitrage(self) -> None:
+        """The worked example from the spec is not an arbitrage opportunity."""
+        event = _build_two_outcome_event(
+            federer_quotes=[("Pinnacle", "2.10"), ("Bet365", "2.05")],
+            nadal_quotes=[("Pinnacle", "1.85"), ("Bet365", "1.90")],
+        )
+
+        assert is_arbitrage_opportunity(event) is False
+
+
+class TestBookmakerOverround:
+    """Verify that bookmaker_overround returns the correct margin (T - 1)."""
+
+    def test_normal_market_has_positive_overround(self) -> None:
+        """A typical bookmaker market has overround between 0.02 and 0.10."""
+        event = _build_two_outcome_event(
+            federer_quotes=[("Pinnacle", "1.91")],
+            nadal_quotes=[("Pinnacle", "1.91")],
+        )
+
+        overround = bookmaker_overround(event)
+
+        assert overround > Decimal(0)
+        assert overround < Decimal("0.10")
+
+    def test_fair_market_has_zero_overround(self) -> None:
+        """At T = 1.0 exactly, the overround is exactly zero."""
+        event = _build_two_outcome_event(
+            federer_quotes=[("Pinnacle", "2.00")],
+            nadal_quotes=[("Pinnacle", "2.00")],
+        )
+
+        assert bookmaker_overround(event) == Decimal(0)
+
+    def test_arbitrage_market_has_negative_overround(self) -> None:
+        """A market with arbitrage has a strictly negative overround."""
+        event = _build_two_outcome_event(
+            federer_quotes=[("Pinnacle", "2.10")],
+            nadal_quotes=[("Bet365", "2.00")],
+        )
+
+        assert bookmaker_overround(event) < Decimal(0)
