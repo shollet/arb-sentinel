@@ -102,7 +102,7 @@ Dependencies (managed by `uv`): `httpx`, `pydantic`, `polars`, `pytest`,
 
 - [x] Repository initialized with `uv` and proper structure
 - [x] CI pipeline running (lint + tests on PR)
-- [ ] Arbitrage math implemented with property-based tests
+- [x] Arbitrage math implemented with property-based tests
 - [ ] Script pulls tennis odds from The Odds API
 - [ ] Quotes validated through Pydantic models
 - [ ] Console output lists arbitrage opportunities

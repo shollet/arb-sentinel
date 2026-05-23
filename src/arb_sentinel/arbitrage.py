@@ -8,7 +8,7 @@ specification, invariants, and references.
 from collections.abc import Iterable
 from decimal import Decimal
 
-from arb_sentinel.models import Event, Outcome, Quote
+from arb_sentinel.models import ArbitrageOpportunity, Event, Outcome, Quote
 
 
 def implied_probability(decimal_odds: Decimal) -> Decimal:
@@ -109,3 +109,26 @@ def optimal_stakes(event: Event, total_stake: Decimal) -> dict[Outcome, Decimal]
         outcome: total_stake * implied_probability(quote.decimal_odds) / total
         for outcome, quote in best.items()
     }
+
+
+def find_arbitrage_opportunity(event: Event, total_stake: Decimal) -> ArbitrageOpportunity | None:
+    """The arbitrage opportunity for this event with the given capital, if any.
+
+    Returns a complete description (best quotes, profit ratio, stake
+    allocation) when arbitrage exists. Returns None when the event is
+    fairly or unfavorably priced.
+    """
+    if not is_arbitrage_opportunity(event):
+        return None
+
+    best_quotes = best_quote_per_outcome(event)
+    profit_ratio = guaranteed_profit_ratio(event)
+
+    return ArbitrageOpportunity(
+        event=event,
+        best_quotes=best_quotes,
+        total_stake=total_stake,
+        optimal_stakes=optimal_stakes(event, total_stake),
+        guaranteed_profit_ratio=profit_ratio,
+        guaranteed_profit=total_stake * profit_ratio,
+    )

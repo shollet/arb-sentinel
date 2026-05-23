@@ -14,6 +14,7 @@ from hypothesis import strategies as st
 from arb_sentinel.arbitrage import (
     best_quote_per_outcome,
     bookmaker_overround,
+    find_arbitrage_opportunity,
     guaranteed_profit_ratio,
     implied_probability,
     is_arbitrage_opportunity,
@@ -438,3 +439,67 @@ class TestOptimalStakes:
         payouts = [stakes[outcome] * quote.decimal_odds for outcome, quote in best.items()]
         # Allow small Decimal precision drift (28 digits, so ~1e-25 tolerance).
         assert abs(payouts[0] - payouts[1]) < Decimal("1e-20")
+
+
+class TestFindArbitrageOpportunity:
+    """Verify the Level 4 composition that returns ArbitrageOpportunity or None."""
+
+    def test_returns_none_on_non_arbitrage_market(self) -> None:
+        """When the event is not an arbitrage opportunity, returns None."""
+        event = _build_two_outcome_event(
+            federer_quotes=[("Pinnacle", "1.91")],
+            nadal_quotes=[("Pinnacle", "1.91")],
+        )
+
+        assert find_arbitrage_opportunity(event, Decimal("1000")) is None
+
+    def test_returns_opportunity_on_arbitrage_market(self) -> None:
+        """When arbitrage exists, returns a complete ArbitrageOpportunity."""
+        event = _build_arbitrage_event("2.10", "2.00")
+
+        opportunity = find_arbitrage_opportunity(event, Decimal("1000"))
+
+        assert opportunity is not None
+        assert opportunity.event == event
+        assert opportunity.total_stake == Decimal("1000")
+        assert opportunity.guaranteed_profit_ratio > Decimal(0)
+        assert opportunity.guaranteed_profit > Decimal(0)
+
+    def test_opportunity_contains_best_quotes_for_all_outcomes(self) -> None:
+        """The returned opportunity includes the best quote for each outcome."""
+        event = _build_arbitrage_event("2.10", "2.00")
+
+        opportunity = find_arbitrage_opportunity(event, Decimal("1000"))
+
+        assert opportunity is not None
+        assert len(opportunity.best_quotes) == len(event.outcomes)
+        for outcome in event.outcomes:
+            assert outcome in opportunity.best_quotes
+
+    def test_opportunity_stakes_sum_to_total_stake(self) -> None:
+        """The optimal stakes in the opportunity sum to the total stake (I3)."""
+        event = _build_arbitrage_event("2.10", "2.00")
+
+        opportunity = find_arbitrage_opportunity(event, Decimal("1000"))
+
+        assert opportunity is not None
+        assert sum(opportunity.optimal_stakes.values()) == Decimal("1000")
+
+    def test_opportunity_profit_equals_ratio_times_stake(self) -> None:
+        """The captured profit equals ratio * total_stake exactly."""
+        event = _build_arbitrage_event("2.10", "2.00")
+
+        opportunity = find_arbitrage_opportunity(event, Decimal("1000"))
+
+        assert opportunity is not None
+        expected_profit = Decimal("1000") * opportunity.guaranteed_profit_ratio
+        assert opportunity.guaranteed_profit == expected_profit
+
+    def test_perfectly_fair_market_returns_none(self) -> None:
+        """A perfectly fair market (T = 1.0) returns None — no arbitrage."""
+        event = _build_two_outcome_event(
+            federer_quotes=[("Pinnacle", "2.00")],
+            nadal_quotes=[("Pinnacle", "2.00")],
+        )
+
+        assert find_arbitrage_opportunity(event, Decimal("1000")) is None

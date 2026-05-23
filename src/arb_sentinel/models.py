@@ -68,3 +68,34 @@ class Event(BaseModel):
     quotes: list[Quote] = Field(
         min_length=1, description="At least one quote is required to reason about the event."
     )
+
+
+class ArbitrageOpportunity(BaseModel):
+    """A detected arbitrage opportunity, with all data needed to act on it.
+
+    Captures the state of the detection at a point in time. Odds may change
+    between detection and execution, so this snapshot is essential for
+    logging, traceability, and audit.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    event: Event
+    best_quotes: dict[Outcome, Quote] = Field(
+        description="The highest-odds quote per outcome, sourced across all bookmakers.",
+    )
+    total_stake: Decimal = Field(
+        gt=Decimal(0),
+        description="The total capital engaged across all outcomes.",
+    )
+    optimal_stakes: dict[Outcome, Decimal] = Field(
+        description="The stake allocation that equalizes payout regardless of outcome.",
+    )
+    guaranteed_profit_ratio: Decimal = Field(
+        gt=Decimal(0),
+        description="Profit as a fraction of total stake (strictly positive for an arbitrage).",
+    )
+    guaranteed_profit: Decimal = Field(
+        gt=Decimal(0),
+        description="Profit in absolute terms (total_stake * guaranteed_profit_ratio).",
+    )
