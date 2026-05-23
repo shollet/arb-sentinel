@@ -100,7 +100,7 @@ Dependencies (managed by `uv`): `httpx`, `pydantic`, `polars`, `pytest`,
 
 ### Definition of Done
 
-- [ ] Repository initialized with `uv` and proper structure
+- [x] Repository initialized with `uv` and proper structure
 - [ ] CI pipeline running (lint + tests on PR)
 - [ ] Arbitrage math implemented with property-based tests
 - [ ] Script pulls tennis odds from The Odds API
@@ -128,10 +128,57 @@ At the end of Iteration 0, we answer:
 
 ---
 
+## Future Considerations
+
+> Tools and practices on the radar for future iterations. Each will be introduced
+> only when a concrete signal justifies it — never speculatively.
+
+| Tool / Practice | Signal that will trigger introduction |
+|-----------------|---------------------------------------|
+| **CHANGELOG.md** (with `git-cliff`) | First tagged version, or first external contributor / user |
+| **Claude Code** (autonomous agent) | Codebase grows beyond manual maintenance; need for multi-file refactors |
+| **Persistent storage** (SQLite then Postgres if needed) | Manual re-running becomes wasteful; need patterns over time |
+| **Backtest engine** | Iteration 0 hypothesis validated; need to quantify edge on historical data |
+| **AI agents** (single, then multi) | Deterministic detection works; need adaptive judgment |
+| **Docker / containerization** | More than 2 services to coordinate, or need for reproducible production |
+| **Continuous deployment** | System needs to run 24/7 reliably |
+
+This list is **not exhaustive** and will evolve. The point is to make the
+"earn complexity" rule explicit: every addition gets a documented signal.
+
+---
+
 ## Decision Log
 
 > Latest decisions at the top. Significant decisions get a dedicated ADR in
 > `docs/adr/` when written.
+
+### 2026-05-23 — Defer Claude Code introduction to learn the stack first
+
+- **Decision**: continue working manually with VS Code + bash for Iteration 0,
+  introducing Claude Code only when the codebase grows enough to benefit from
+  multi-file refactors and autonomous agent workflows.
+- **Rationale**: respects the earn-complexity principle for our own tooling.
+  Learning the modern Python stack (uv, ruff, polars, pydantic) by hand builds
+  intuition that pays off when delegating to an agent later. A future ADR
+  ("ADR-XXXX: When to introduce Claude Code") will be written when the signal
+  appears.
+
+### 2026-05-23 — Minimalist README over showcase README
+
+- **Decision**: keep README.md sober and focused on essentials (tagline, status,
+  quick start, dev commands, link to ROADMAP). No badges, no marketing.
+- **Rationale**: the ROADMAP carries the showcase. The README is a functional
+  entry point. Duplication would dilute both. Visitors who want depth click
+  through to ROADMAP; visitors who want quick context get it instantly.
+
+### 2026-05-23 — MIT license adopted and file added
+
+- **Decision**: LICENSE file added at repository root, MIT terms with 2026
+  copyright to Shayan Hollet.
+- **Rationale**: confirms the open source posture decided earlier. MIT chosen
+  for maximum permissiveness and recruiter familiarity. PEP 639 SPDX identifier
+  already in pyproject.toml.
 
 ### 2026-05-18 — Iteration 0 scope finalized
 
@@ -165,6 +212,6 @@ At the end of Iteration 0, we answer:
 
 <div align="center">
 
-*Last updated: 2026-05-18 · Iteration 0 in progress*
+*Last updated: 2026-05-23 · Iteration 0 in progress*
 
 </div>
