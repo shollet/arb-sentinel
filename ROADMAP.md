@@ -156,6 +156,20 @@ This list is **not exhaustive** and will evolve. The point is to make the
 > Latest decisions at the top. Significant decisions get a dedicated ADR in
 > `docs/adr/` when written.
 
+### 2026-05-23 — Decimal precision lessons in property-based testing
+
+- **Decision**: do not assert exact equality on the multiplicative inverse
+  identity (p * O == 1). Instead, verify the probability-validity invariant
+  (0 < p < 1) for the general case and exact-equality cases for inputs with
+  terminating decimal reciprocals.
+- **Rationale**: Decimal arithmetic in Python tracks 28 significant digits
+  by default. Divisions like 1/3.74 produce non-terminating decimals that
+  get truncated, making p * O slightly less than 1. This is not a bug in
+  our code — it is a fundamental property of finite-precision arithmetic.
+  Hypothesis surfaced this immediately by finding 3.74 as a falsifying
+  example, an instructive reminder that mathematical identities do not
+  always survive finite-precision computation.
+
 ### 2026-05-23 — Spec-driven design documents under docs/design/
 
 - **Decision**: significant business logic (math, algorithms, key data flows)
