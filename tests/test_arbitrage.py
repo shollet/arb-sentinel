@@ -14,8 +14,10 @@ from hypothesis import strategies as st
 from arb_sentinel.arbitrage import (
     best_quote_per_outcome,
     bookmaker_overround,
+    guaranteed_profit_ratio,
     implied_probability,
     is_arbitrage_opportunity,
+    optimal_stakes,
     total_implied_probability,
 )
 from arb_sentinel.models import Bookmaker, Event, Outcome, Quote
@@ -25,6 +27,15 @@ from arb_sentinel.models import Bookmaker, Event, Outcome, Quote
 valid_decimal_odds = st.decimals(
     min_value=Decimal("1.01"),
     max_value=Decimal("100"),
+    places=2,
+    allow_nan=False,
+    allow_infinity=False,
+)
+
+# Strategy: generate realistic total stakes for betting scenarios.
+valid_total_stake = st.decimals(
+    min_value=Decimal("1.00"),
+    max_value=Decimal("1000000.00"),
     places=2,
     allow_nan=False,
     allow_infinity=False,
@@ -86,6 +97,18 @@ def _build_two_outcome_event(
         description="Federer vs Nadal",
         outcomes=[federer, nadal],
         quotes=quotes,
+    )
+
+
+def _build_arbitrage_event(federer_odds: str, nadal_odds: str) -> Event:
+    """Build a two-outcome event with quotes from different bookmakers.
+
+    Used in tests that need an arbitrage event; the caller is responsible
+    for ensuring the odds combination actually creates arbitrage.
+    """
+    return _build_two_outcome_event(
+        federer_quotes=[("Pinnacle", federer_odds)],
+        nadal_quotes=[("Bet365", nadal_odds)],
     )
 
 
@@ -294,3 +317,124 @@ class TestBookmakerOverround:
         )
 
         assert bookmaker_overround(event) < Decimal(0)
+
+
+class TestGuaranteedProfitRatio:
+    """Verify invariant I5: r = (1/T) - 1.
+
+    The ratio is positive only when arbitrage exists (T < 1).
+    """
+
+    def test_arbitrage_market_has_positive_profit_ratio(self) -> None:
+        """An arbitrage market yields a positive guaranteed profit ratio."""
+        event = _build_arbitrage_event("2.10", "2.00")
+
+        ratio = guaranteed_profit_ratio(event)
+
+        assert ratio > Decimal(0)
+
+    def test_fair_market_has_zero_profit_ratio(self) -> None:
+        """A perfectly fair market (T = 1.0) yields exactly zero profit."""
+        event = _build_two_outcome_event(
+            federer_quotes=[("Pinnacle", "2.00")],
+            nadal_quotes=[("Pinnacle", "2.00")],
+        )
+
+        assert guaranteed_profit_ratio(event) == Decimal(0)
+
+    def test_normal_market_has_negative_profit_ratio(self) -> None:
+        """A market with overround (T > 1) yields a negative profit ratio."""
+        event = _build_two_outcome_event(
+            federer_quotes=[("Pinnacle", "1.91")],
+            nadal_quotes=[("Pinnacle", "1.91")],
+        )
+
+        assert guaranteed_profit_ratio(event) < Decimal(0)
+
+    def test_worked_example_profit_ratio(self) -> None:
+        """The arbitrage case from the spec yields profit ratio of about 0.0244.
+
+        Federer at 2.10 + Nadal at 2.00: T = 0.9762, r = 1/0.9762 - 1 ≈ 0.0244.
+        """
+        event = _build_arbitrage_event("2.10", "2.00")
+
+        ratio = guaranteed_profit_ratio(event)
+
+        assert Decimal("0.0243") < ratio < Decimal("0.0245")
+
+
+class TestOptimalStakes:
+    """Verify invariants I3 (stake conservation) and I4 (equal payout)."""
+
+    def test_raises_when_not_arbitrage(self) -> None:
+        """Computing optimal stakes on a non-arbitrage event raises ValueError."""
+        event = _build_two_outcome_event(
+            federer_quotes=[("Pinnacle", "1.91")],
+            nadal_quotes=[("Pinnacle", "1.91")],
+        )
+
+        with pytest.raises(ValueError, match="not an arbitrage"):
+            optimal_stakes(event, Decimal("1000"))
+
+    def test_stakes_sum_to_total_stake(self) -> None:
+        """Invariant I3: the sum of optimal stakes equals the total stake exactly."""
+        event = _build_arbitrage_event("2.10", "2.00")
+        total_stake = Decimal("1000")
+
+        stakes = optimal_stakes(event, total_stake)
+
+        assert sum(stakes.values()) == total_stake
+
+    def test_equal_payout_across_outcomes(self) -> None:
+        """Invariant I4: the payout is identical regardless of which outcome wins.
+
+        For each outcome, payout = stake_on_outcome * decimal_odds. With optimal
+        stakes, this should be the same for all outcomes.
+        """
+        event = _build_arbitrage_event("2.10", "2.00")
+        total_stake = Decimal("1000")
+
+        stakes = optimal_stakes(event, total_stake)
+        best = best_quote_per_outcome(event)
+
+        payouts = [stakes[outcome] * quote.decimal_odds for outcome, quote in best.items()]
+        # All payouts equal — pick any two and assert equality.
+        assert payouts[0] == payouts[1]
+
+    def test_worked_example_stakes(self) -> None:
+        """The arbitrage worked example from the spec produces the documented stakes.
+
+        Federer at 2.10 + Nadal at 2.00, $1000 total stake:
+        - Federer stake: 1000 * (1/2.10) / 0.9762 ≈ $487.81
+        - Nadal stake: 1000 * (1/2.00) / 0.9762 ≈ $512.19
+        """
+        event = _build_arbitrage_event("2.10", "2.00")
+        federer = next(o for o in event.outcomes if o.name == "Federer")
+        nadal = next(o for o in event.outcomes if o.name == "Nadal")
+
+        stakes = optimal_stakes(event, Decimal("1000"))
+
+        assert Decimal("487.80") < stakes[federer] < Decimal("487.82")
+        assert Decimal("512.18") < stakes[nadal] < Decimal("512.20")
+
+    @given(
+        federer_odds=st.decimals(min_value=Decimal("2.05"), max_value=Decimal("3.00"), places=2),
+        nadal_odds=st.decimals(min_value=Decimal("2.05"), max_value=Decimal("3.00"), places=2),
+        total_stake=valid_total_stake,
+    )
+    def test_property_equal_payout_for_random_arbitrage(
+        self, federer_odds: Decimal, nadal_odds: Decimal, total_stake: Decimal
+    ) -> None:
+        """Invariant I4 (property-based): equal payout holds for any arbitrage event.
+
+        Generated odds in [2.05, 3.00] guarantee an arbitrage opportunity:
+        if both odds >= 2.05, then 1/odds_a + 1/odds_b <= 2/2.05 ≈ 0.9756 < 1.
+        """
+        event = _build_arbitrage_event(str(federer_odds), str(nadal_odds))
+
+        stakes = optimal_stakes(event, total_stake)
+        best = best_quote_per_outcome(event)
+
+        payouts = [stakes[outcome] * quote.decimal_odds for outcome, quote in best.items()]
+        # Allow small Decimal precision drift (28 digits, so ~1e-25 tolerance).
+        assert abs(payouts[0] - payouts[1]) < Decimal("1e-20")

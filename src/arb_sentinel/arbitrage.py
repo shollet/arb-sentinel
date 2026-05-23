@@ -76,3 +76,36 @@ def bookmaker_overround(event: Event) -> Decimal:
     """
     best = best_quote_per_outcome(event)
     return total_implied_probability(best.values()) - Decimal(1)
+
+
+def guaranteed_profit_ratio(event: Event) -> Decimal:
+    """The fraction of total stake returned as profit, guaranteed regardless of outcome.
+
+    For an arbitrage opportunity, this is what a bettor earns above their
+    capital. A ratio of 0.0504 means a $1000 stake yields $50.40 of
+    guaranteed profit. The ratio is positive only when arbitrage exists.
+    """
+    best = best_quote_per_outcome(event)
+    total = total_implied_probability(best.values())
+    return Decimal(1) / total - Decimal(1)
+
+
+def optimal_stakes(event: Event, total_stake: Decimal) -> dict[Outcome, Decimal]:
+    """The stake allocation per outcome that guarantees equal payout regardless of outcome.
+
+    Returns the distribution of capital across outcomes such that whichever
+    outcome wins, the bettor receives the same payout. The formula
+    proportionally weights each outcome by its implied probability divided
+    by the total implied probability.
+
+    Raises ValueError if the event is not an arbitrage opportunity.
+    """
+    if not is_arbitrage_opportunity(event):
+        raise ValueError("Cannot compute optimal stakes: event is not an arbitrage opportunity.")
+
+    best = best_quote_per_outcome(event)
+    total = total_implied_probability(best.values())
+    return {
+        outcome: total_stake * implied_probability(quote.decimal_odds) / total
+        for outcome, quote in best.items()
+    }
