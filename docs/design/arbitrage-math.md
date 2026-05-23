@@ -163,6 +163,9 @@ def total_implied_probability(quotes: Iterable[Quote]) -> Decimal:
     sum on a single bookmaker is typically 1.02 to 1.10. When the sum
     across the best quotes from different bookmakers drops below 1, an
     arbitrage opportunity exists.
+
+    Returns Decimal(0) for an empty collection — the natural identity for
+    sums. Callers that require non-empty inputs should validate upstream.
     """
 ```
 
@@ -264,6 +267,10 @@ Payout if Nadal wins: $512.19 \cdot 2.00 = \$1024.39$ (rounding)
 
 In both cases, profit is approximately $24.40, or a guaranteed profit
 ratio of $r = 1/0.9762 - 1 = 0.0244 = 2.44\%$.
+
+This worked example is exercised by a test in `tests/test_arbitrage.py`
+(`test_worked_example_matches_design_doc`) to keep the documentation and
+implementation synchronized.
 
 ## Out of Scope (Future Iterations)
 
