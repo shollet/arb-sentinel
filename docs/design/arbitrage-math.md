@@ -245,28 +245,32 @@ Consider a two-bookmaker tennis match:
 
 **Step 2**: total implied probability.
 
-$$T = \frac{1}{2.10} + \frac{1}{1.90} = 0.4762 + 0.5263 = 1.0025$$
+$$T = \frac{1}{2.10} + \frac{1}{1.90} \approx 0.4762 + 0.5263 = 1.0025$$
 
 **Step 3**: arbitrage check.
 
-$T = 1.0025 > 1$, so no arbitrage opportunity. The overround is +0.0025
+Since $T = 1.0025 > 1$, no arbitrage opportunity. The overround is $+0.0025$
 (0.25%), meaning a bettor placing stakes across both outcomes would lose
 about 0.25% on average.
 
 Suppose instead Bet365 offered Nadal at 2.00:
 
-$$T = \frac{1}{2.10} + \frac{1}{2.00} = 0.4762 + 0.5000 = 0.9762$$
+$$T = \frac{1}{2.10} + \frac{1}{2.00} \approx 0.4762 + 0.5000 = 0.9762$$
 
-Now $T < 1$, arbitrage exists. With a total stake of $1000:
+Now $T < 1$, arbitrage exists. With a total stake of $S = 1000$:
 
-- Stake on Federer: $1000 \cdot 0.4762 / 0.9762 = \$487.81$
-- Stake on Nadal: $1000 \cdot 0.5000 / 0.9762 = \$512.19$
+$$s_F = S \cdot \frac{p_F}{T} = 1000 \cdot \frac{0.4762}{0.9762} \approx 487.81$$
 
-Payout if Federer wins: $487.81 \cdot 2.10 = \$1024.40$
-Payout if Nadal wins: $512.19 \cdot 2.00 = \$1024.39$ (rounding)
+$$s_N = S \cdot \frac{p_N}{T} = 1000 \cdot \frac{0.5000}{0.9762} \approx 512.19$$
 
-In both cases, profit is approximately $24.40, or a guaranteed profit
-ratio of $r = 1/0.9762 - 1 = 0.0244 = 2.44\%$.
+Payout if Federer wins: $487.81 \times 2.10 \approx 1024.40$
+
+Payout if Nadal wins: $512.19 \times 2.00 \approx 1024.39$ (rounding)
+
+In both cases, profit is approximately 24.40, or a guaranteed profit
+ratio of:
+
+$$r = \frac{1}{0.9762} - 1 = 0.0244 = 2.44\%$$
 
 This worked example is exercised by a test in `tests/test_arbitrage.py`
 (`test_worked_example_matches_design_doc`) to keep the documentation and
