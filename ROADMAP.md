@@ -103,9 +103,9 @@ Dependencies (managed by `uv`): `httpx`, `pydantic`, `polars`, `pytest`,
 - [x] Repository initialized with `uv` and proper structure
 - [x] CI pipeline running (lint + tests on PR)
 - [x] Arbitrage math implemented with property-based tests
-- [ ] Script pulls tennis odds from The Odds API
-- [ ] Quotes validated through Pydantic models
-- [ ] Console output lists arbitrage opportunities
+- [x] Script pulls tennis odds from The Odds API
+- [x] Quotes validated through Pydantic models
+- [x] Console output lists arbitrage opportunities
 
 ### Explicit Non-Goals
 
@@ -155,6 +155,25 @@ This list is **not exhaustive** and will evolve. The point is to make the
 
 > Latest decisions at the top. Significant decisions get a dedicated ADR in
 > `docs/adr/` when written.
+
+### 2026-05-30 — In-play events filtered to avoid phantom arbitrages
+
+- **Decision**: the mapper rejects events with `commence_time <= now(UTC)`,
+  preventing in-play (live) events from reaching the arbitrage math. The
+  HTTP client skips these events silently alongside other unmappable
+  cases (insufficient quotes).
+- **Rationale**: empirical observation during live testing on ATP French
+  Open surfaced apparent arbitrages with 20-50% profit ratios on in-play
+  events. Investigation revealed these as artifacts of update-latency
+  differences between bookmakers: faster bookmakers reflected the current
+  match state (set scores, momentum) while slower bookmakers still showed
+  stale prices. The math correctly identified the discrepancy, but the
+  slower bookmaker corrected within seconds, making the bet unexecutable.
+  Filtering in-play events restores the IT0 invariant that detected
+  arbitrages should be at least theoretically actionable. Live in-play
+  arbitrage detection would require timestamp-aware quote validity,
+  suspension detection, and execution latency modeling — out of scope
+  for IT0.
 
 ### 2026-05-30 — Odds API integration design
 
