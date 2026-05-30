@@ -156,6 +156,32 @@ This list is **not exhaustive** and will evolve. The point is to make the
 > Latest decisions at the top. Significant decisions get a dedicated ADR in
 > `docs/adr/` when written.
 
+### 2026-05-30 — Odds API integration design
+
+- **Decision**: integrate The Odds API as the single odds source for
+  IT0. The integration lives in a single module `src/arb_sentinel/odds_api.py`
+  with three responsibilities (Pydantic schemas mirroring the API shape,
+  mapper to domain models, HTTP client). Exchange-only `h2h_lay` markets
+  are filtered out silently in the mapper.
+- **Rationale**: the back/lay distinction on exchanges (Betfair, Matchbook)
+  represents different financial contracts and would require extending
+  the arbitrage math. Filtering `h2h_lay` keeps the math correct without
+  complicating IT0. See `docs/design/odds-api-integration.md` for full
+  spec and `docs/design/arbitrage-math.md` Out of Scope section for the
+  related mathematical scope.
+
+### 2026-05-30 — Local secret management with python-dotenv
+
+- **Decision**: API keys and other secrets are loaded from a local `.env`
+  file via `python-dotenv` (the 12-factor app convention). The `.env` file
+  is gitignored; `.env.example` documents required variables without
+  exposing values.
+- **Rationale**: code reads from `os.environ` regardless of the source,
+  so the same code path supports local development (`.env`), Docker secrets
+  (file mounted to filesystem, entrypoint exports env var), and HashiCorp
+  Vault (sidecar populates env vars). Future production migration changes
+  the runtime, not the application code.
+
 ### 2026-05-23 — Decimal precision lessons in property-based testing
 
 - **Decision**: do not assert exact equality on the multiplicative inverse
