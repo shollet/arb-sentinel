@@ -1,0 +1,353 @@
+{
+  "id": "f86465f8a37b002c1ee0ee15d17acf47",
+  "sport_key": "tennis_atp_french_open",
+  "sport_title": "ATP French Open",
+  "commence_time": "2026-05-30T15:00:00Z",
+  "home_team": "Matteo Arnaldi",
+  "away_team": "Raphael Collignon",
+  "bookmakers": [
+    {
+      "key": "winamax_fr",
+      "title": "Winamax (FR)",
+      "last_update": "2026-05-30T19:24:05Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:24:05Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.13
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 4.2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "unibet_se",
+      "title": "Unibet (SE)",
+      "last_update": "2026-05-30T19:24:04Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:24:04Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.16
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 5.2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "winamax_de",
+      "title": "Winamax (DE)",
+      "last_update": "2026-05-30T19:24:07Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:24:07Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.15
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 4.4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "nordicbet",
+      "title": "Nordic Bet",
+      "last_update": "2026-05-30T19:24:08Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:24:07Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.18
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 4.7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "pmu_fr",
+      "title": "PMU (FR)",
+      "last_update": "2026-05-30T19:23:45Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:23:45Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.09
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 5.1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "coolbet",
+      "title": "Coolbet",
+      "last_update": "2026-05-30T19:23:27Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:23:26Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.16
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 5.25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betsson",
+      "title": "Betsson",
+      "last_update": "2026-05-30T19:23:25Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:23:25Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.16
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 5.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betfair_ex_eu",
+      "title": "Betfair",
+      "last_update": "2026-05-30T19:24:04Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:24:04Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.23
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 5.1
+            }
+          ]
+        },
+        {
+          "key": "h2h_lay",
+          "last_update": "2026-05-30T19:24:04Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.24
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 5.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "unibet_nl",
+      "title": "Unibet (NL)",
+      "last_update": "2026-05-30T19:23:26Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:23:26Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.15
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 5.4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "leovegas_se",
+      "title": "LeoVegas (SE)",
+      "last_update": "2026-05-30T19:23:26Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:23:26Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.11
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 5.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "tipico_de",
+      "title": "Tipico",
+      "last_update": "2026-05-30T19:23:44Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:23:44Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.16
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 4.7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "sport888",
+      "title": "888sport",
+      "last_update": "2026-05-30T19:23:25Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:23:25Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.17
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 4.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "pinnacle",
+      "title": "Pinnacle",
+      "last_update": "2026-05-30T19:24:06Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:24:06Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.68
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 2.26
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "matchbook",
+      "title": "Matchbook",
+      "last_update": "2026-05-30T19:24:04Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:24:04Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.25
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 4.5
+            }
+          ]
+        },
+        {
+          "key": "h2h_lay",
+          "last_update": "2026-05-30T19:24:04Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.28
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 4.9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "betclic_fr",
+      "title": "Betclic (FR)",
+      "last_update": "2026-05-30T19:21:28Z",
+      "markets": [
+        {
+          "key": "h2h",
+          "last_update": "2026-05-30T19:21:28Z",
+          "outcomes": [
+            {
+              "name": "Matteo Arnaldi",
+              "price": 1.1
+            },
+            {
+              "name": "Raphael Collignon",
+              "price": 5.5
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
