@@ -23,6 +23,7 @@ dependencies = [
     "httpx>=0.28.1",
     "polars>=1.40.1",
     "pydantic>=2.13.4",
+    "python-dotenv>=1.2.2",
 ]
 
 [project.urls]
