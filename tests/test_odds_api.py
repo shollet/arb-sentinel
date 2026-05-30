@@ -4,11 +4,14 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
+
 from arb_sentinel.odds_api import (
     OddsApiBookmaker,
     OddsApiEvent,
     OddsApiMarket,
     OddsApiOutcome,
+    to_domain_event,
 )
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "odds_api_event_sample.json"
@@ -89,3 +92,173 @@ class TestOddsApiSchemas:
         )
         assert bookmaker.title == "Pinnacle"
         assert len(bookmaker.markets) == 1
+
+
+def _build_api_event(
+    bookmakers: list[OddsApiBookmaker],
+    home_team: str = "Player A",
+    away_team: str = "Player B",
+) -> OddsApiEvent:
+    """Build a minimal API event for mapper tests."""
+    return OddsApiEvent(
+        id="test_event_id",
+        sport_key="tennis_atp_french_open",
+        sport_title="ATP French Open",
+        commence_time="2026-05-30T15:00:00Z",
+        home_team=home_team,
+        away_team=away_team,
+        bookmakers=bookmakers,
+    )
+
+
+def _build_api_bookmaker(
+    title: str,
+    h2h_prices: dict[str, str] | None = None,
+    h2h_lay_prices: dict[str, str] | None = None,
+) -> OddsApiBookmaker:
+    """Build a minimal API bookmaker with optional h2h and h2h_lay markets."""
+    markets = []
+    if h2h_prices:
+        markets.append(
+            OddsApiMarket(
+                key="h2h",
+                last_update="2026-05-30T18:00:00Z",
+                outcomes=[
+                    OddsApiOutcome(name=name, price=Decimal(price))
+                    for name, price in h2h_prices.items()
+                ],
+            )
+        )
+    if h2h_lay_prices:
+        markets.append(
+            OddsApiMarket(
+                key="h2h_lay",
+                last_update="2026-05-30T18:00:00Z",
+                outcomes=[
+                    OddsApiOutcome(name=name, price=Decimal(price))
+                    for name, price in h2h_lay_prices.items()
+                ],
+            )
+        )
+    return OddsApiBookmaker(
+        key=title.lower().replace(" ", "_"),
+        title=title,
+        last_update="2026-05-30T18:00:00Z",
+        markets=markets,
+    )
+
+
+class TestMapper:
+    """Verify that to_domain_event correctly maps API events to domain events."""
+
+    def test_real_fixture_maps_to_valid_event(self) -> None:
+        """The captured fixture maps to a valid domain Event."""
+        api_event = OddsApiEvent.model_validate(_load_fixture())
+
+        event = to_domain_event(api_event)
+
+        assert event.description == "Matteo Arnaldi vs Raphael Collignon"
+        assert len(event.outcomes) == 2
+        outcome_names = {o.name for o in event.outcomes}
+        assert outcome_names == {"Matteo Arnaldi", "Raphael Collignon"}
+
+    def test_h2h_lay_markets_are_filtered_out(self) -> None:
+        """Bookmakers offering both h2h and h2h_lay contribute only h2h quotes."""
+        api_event = OddsApiEvent.model_validate(_load_fixture())
+
+        event = to_domain_event(api_event)
+
+        # Betfair offers both h2h and h2h_lay in the fixture. We expect
+        # exactly 2 quotes from Betfair (one per outcome from h2h), not 4.
+        betfair_quotes = [q for q in event.quotes if q.bookmaker.name == "Betfair"]
+        assert len(betfair_quotes) == 2
+
+    def test_description_composes_from_home_and_away_team(self) -> None:
+        """Event description follows the 'home vs away' convention."""
+        api_event = _build_api_event(
+            home_team="Federer",
+            away_team="Nadal",
+            bookmakers=[
+                _build_api_bookmaker("Pinnacle", h2h_prices={"Federer": "2.10", "Nadal": "1.85"})
+            ],
+        )
+
+        event = to_domain_event(api_event)
+
+        assert event.description == "Federer vs Nadal"
+
+    def test_bookmaker_with_only_h2h_lay_is_excluded(self) -> None:
+        """A bookmaker offering only h2h_lay is excluded entirely."""
+        api_event = _build_api_event(
+            bookmakers=[
+                _build_api_bookmaker(
+                    "Pinnacle",
+                    h2h_prices={"Player A": "2.10", "Player B": "1.85"},
+                ),
+                _build_api_bookmaker(
+                    "ExchangeOnly",
+                    h2h_lay_prices={"Player A": "2.20", "Player B": "1.80"},
+                ),
+            ]
+        )
+
+        event = to_domain_event(api_event)
+
+        bookmaker_names = {q.bookmaker.name for q in event.quotes}
+        assert bookmaker_names == {"Pinnacle"}
+
+    def test_outcome_objects_are_shared_across_quotes(self) -> None:
+        """The same outcome name produces the same Outcome object across bookmakers."""
+        api_event = _build_api_event(
+            bookmakers=[
+                _build_api_bookmaker("Pinnacle", h2h_prices={"A": "2.10", "B": "1.85"}),
+                _build_api_bookmaker("Bet365", h2h_prices={"A": "2.05", "B": "1.90"}),
+            ]
+        )
+
+        event = to_domain_event(api_event)
+
+        outcomes_for_a = {q.outcome for q in event.quotes if q.outcome.name == "A"}
+        assert len(outcomes_for_a) == 1
+
+    def test_prices_propagate_as_decimal(self) -> None:
+        """Decimal prices from API schemas reach domain Quote unchanged."""
+        api_event = _build_api_event(
+            bookmakers=[_build_api_bookmaker("Pinnacle", h2h_prices={"A": "2.10", "B": "1.85"})]
+        )
+
+        event = to_domain_event(api_event)
+
+        for quote in event.quotes:
+            assert isinstance(quote.decimal_odds, Decimal)
+
+    def test_event_with_insufficient_quotes_raises(self) -> None:
+        """An event with zero h2h quotes raises ValueError."""
+        api_event = _build_api_event(
+            bookmakers=[
+                _build_api_bookmaker(
+                    "ExchangeOnly",
+                    h2h_lay_prices={"A": "2.20", "B": "1.80"},
+                ),
+            ]
+        )
+
+        with pytest.raises(ValueError, match="insufficient quotes"):
+            to_domain_event(api_event)
+
+    def test_mapped_event_is_consumable_by_arbitrage_module(self) -> None:
+        """The Event produced by the mapper works with arbitrage detection."""
+        from arb_sentinel.arbitrage import find_arbitrage_opportunity
+
+        api_event = _build_api_event(
+            bookmakers=[
+                _build_api_bookmaker("Pinnacle", h2h_prices={"A": "2.10", "B": "2.00"}),
+            ]
+        )
+
+        event = to_domain_event(api_event)
+        opportunity = find_arbitrage_opportunity(event, total_stake=Decimal("1000"))
+
+        # T = 1/2.10 + 1/2.00 = 0.976 -> arbitrage exists
+        assert opportunity is not None
+        assert opportunity.guaranteed_profit > Decimal(0)
