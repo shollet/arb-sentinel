@@ -4,13 +4,17 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
+import httpx
 import pytest
+import respx
 
 from arb_sentinel.odds_api import (
+    ODDS_API_BASE_URL,
     OddsApiBookmaker,
     OddsApiEvent,
     OddsApiMarket,
     OddsApiOutcome,
+    fetch_events,
     to_domain_event,
 )
 
@@ -262,3 +266,98 @@ class TestMapper:
         # T = 1/2.10 + 1/2.00 = 0.976 -> arbitrage exists
         assert opportunity is not None
         assert opportunity.guaranteed_profit > Decimal(0)
+
+
+def _expected_url(sport_key: str) -> str:
+    """The URL pattern fetch_events targets for a given sport_key."""
+    return f"{ODDS_API_BASE_URL}/sports/{sport_key}/odds"
+
+
+class TestHttpClient:
+    """Verify that fetch_events makes the right HTTP call and processes responses correctly.
+
+    All HTTP traffic is intercepted by respx; no real API call is made.
+    """
+
+    @respx.mock
+    def test_fetch_events_targets_correct_url_and_params(self) -> None:
+        """fetch_events sends a GET to the expected URL with required params."""
+        sport_key = "tennis_atp_french_open"
+        route = respx.get(_expected_url(sport_key)).mock(return_value=httpx.Response(200, json=[]))
+
+        fetch_events(sport_key=sport_key, api_key="fake_key")
+
+        assert route.called
+        request = route.calls.last.request
+        assert request.url.params["apiKey"] == "fake_key"
+        assert request.url.params["regions"] == "eu"
+        assert request.url.params["markets"] == "h2h"
+        assert request.url.params["oddsFormat"] == "decimal"
+
+    @respx.mock
+    def test_fetch_events_returns_mapped_domain_events(self) -> None:
+        """A successful API response is parsed and mapped to domain Events."""
+        sport_key = "tennis_atp_french_open"
+        respx.get(_expected_url(sport_key)).mock(
+            return_value=httpx.Response(200, json=[_load_fixture()])
+        )
+
+        events = fetch_events(sport_key=sport_key, api_key="fake_key")
+
+        assert len(events) == 1
+        assert events[0].description == "Matteo Arnaldi vs Raphael Collignon"
+
+    @respx.mock
+    def test_fetch_events_returns_empty_list_when_api_returns_empty(self) -> None:
+        """An empty API response produces an empty list, not an error."""
+        sport_key = "tennis_atp_french_open"
+        respx.get(_expected_url(sport_key)).mock(return_value=httpx.Response(200, json=[]))
+
+        events = fetch_events(sport_key=sport_key, api_key="fake_key")
+
+        assert events == []
+
+    @respx.mock
+    def test_fetch_events_skips_unmappable_events(self) -> None:
+        """Events that cannot be mapped (insufficient quotes) are silently skipped."""
+        sport_key = "tennis_atp_french_open"
+        valid_event = _load_fixture()
+        unmappable_event = {
+            "id": "broken_event",
+            "sport_key": "tennis_atp_french_open",
+            "sport_title": "ATP French Open",
+            "commence_time": "2026-05-30T15:00:00Z",
+            "home_team": "Player X",
+            "away_team": "Player Y",
+            "bookmakers": [],  # no bookmakers -> no quotes -> mapping fails
+        }
+        respx.get(_expected_url(sport_key)).mock(
+            return_value=httpx.Response(200, json=[valid_event, unmappable_event])
+        )
+
+        events = fetch_events(sport_key=sport_key, api_key="fake_key")
+
+        assert len(events) == 1
+        assert events[0].description == "Matteo Arnaldi vs Raphael Collignon"
+
+    @respx.mock
+    def test_fetch_events_raises_on_unauthorized(self) -> None:
+        """A 401 response raises httpx.HTTPStatusError for the caller to handle."""
+        sport_key = "tennis_atp_french_open"
+        respx.get(_expected_url(sport_key)).mock(
+            return_value=httpx.Response(401, json={"message": "Invalid API key"})
+        )
+
+        with pytest.raises(httpx.HTTPStatusError):
+            fetch_events(sport_key=sport_key, api_key="invalid_key")
+
+    @respx.mock
+    def test_fetch_events_raises_on_rate_limit(self) -> None:
+        """A 429 response raises httpx.HTTPStatusError."""
+        sport_key = "tennis_atp_french_open"
+        respx.get(_expected_url(sport_key)).mock(
+            return_value=httpx.Response(429, json={"message": "Rate limit exceeded"})
+        )
+
+        with pytest.raises(httpx.HTTPStatusError):
+            fetch_events(sport_key=sport_key, api_key="fake_key")

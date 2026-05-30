@@ -10,9 +10,12 @@ See docs/design/odds-api-integration.md for the complete specification.
 from datetime import datetime
 from decimal import Decimal
 
+import httpx
 from pydantic import BaseModel, ConfigDict
 
 from arb_sentinel.models import Bookmaker, Event, Outcome, Quote
+
+ODDS_API_BASE_URL = "https://api.the-odds-api.com/v4"
 
 
 class OddsApiOutcome(BaseModel):
@@ -122,3 +125,36 @@ def to_domain_event(api_event: OddsApiEvent) -> Event:
         outcomes=list(outcomes_by_name.values()),
         quotes=quotes,
     )
+
+
+def fetch_events(sport_key: str, api_key: str) -> list[Event]:
+    """Fetch all events for the given tournament from The Odds API.
+
+    Returns domain Event objects ready for arbitrage detection. Events
+    that cannot be mapped (e.g., no h2h quotes available) are silently
+    skipped so a single unusable event does not prevent the others from
+    being returned.
+
+    Raises httpx.HTTPStatusError on non-2xx responses (rate limit,
+    invalid key, network errors, etc.). The caller decides how to react.
+    """
+    url = f"{ODDS_API_BASE_URL}/sports/{sport_key}/odds"
+    params = {
+        "apiKey": api_key,
+        "regions": "eu",
+        "markets": "h2h",
+        "oddsFormat": "decimal",
+    }
+
+    response = httpx.get(url, params=params)
+    response.raise_for_status()
+
+    domain_events: list[Event] = []
+    for raw_event in response.json():
+        api_event = OddsApiEvent.model_validate(raw_event)
+        try:
+            domain_events.append(to_domain_event(api_event))
+        except ValueError:
+            continue
+
+    return domain_events
