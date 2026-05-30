@@ -83,8 +83,13 @@ def to_domain_event(api_event: OddsApiEvent) -> Event:
     """Map a single API event to a domain Event.
 
     Filters bookmaker markets to keep only `h2h`. Skips bookmakers that
-    do not offer h2h. Raises ValueError if the resulting event has fewer
-    than 2 quotes (insufficient for arbitrage analysis).
+    do not offer h2h. Raises ValueError if:
+
+    - The event has already started (in-play). In-play odds change
+      constantly and bookmakers update at different speeds, producing
+      apparent arbitrages that are not actually exploitable.
+    - The resulting event has fewer than 2 quotes (insufficient for
+      arbitrage analysis).
     """
 ```
 
@@ -160,7 +165,7 @@ The mapper produces:
 | **Lay markets** (`h2h_lay` from Betfair, Matchbook) | Lay bets are a different financial contract: laying at odds *O* commits *(O-1) × stake* of liability for a gain of *stake*. Mixing lay and back in arbitrage math requires extending the model. |
 | **Bookmaker commissions** (Betfair 5% on net winnings, etc.) | Already deferred in the arbitrage math spec. Commissions would change the profit calculation when exchanges are involved. |
 | **Liquidity / partial fills** | The API price reflects the best available offer, but the size at that price may be limited. IT0 is observation-only, so this is not exercised. |
-| **In-play / live odds** | IT0 uses pre-match odds only. Live odds change rapidly and require timestamp-aware quote validity. |
+| **In-play / live odds detection** | IT0 filters out events whose `commence_time` has passed. In-play odds change in real time and bookmakers update at different latencies, producing apparent arbitrages (sometimes 20-50% profit ratios) that are not exploitable because the cheaper bookmaker has already corrected its price by the time a bet could be placed. Iteration 0 detection is restricted to pre-match events; live arbitrage requires timestamp-aware quote validity, suspension detection, and execution latency modeling. |
 | **Rate limiting strategy** | Free tier (500 requests/month) is generous for manual IT0 use. Production usage will need request budgeting and caching. |
 | **Retries and error recovery** | Errors propagate to the caller in IT0. A retry policy (exponential backoff, circuit breaker) is appropriate when automation arrives. |
 | **Multi-source aggregation** | One source (The Odds API) is sufficient to validate the IT0 hypothesis. Multi-source raises consensus and reconciliation concerns. |

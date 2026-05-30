@@ -102,13 +102,18 @@ def _build_api_event(
     bookmakers: list[OddsApiBookmaker],
     home_team: str = "Player A",
     away_team: str = "Player B",
+    commence_time: str = "2099-01-01T00:00:00Z",
 ) -> OddsApiEvent:
-    """Build a minimal API event for mapper tests."""
+    """Build a minimal API event for mapper tests.
+
+    Defaults to commence_time far in the future so the in-play filter
+    does not reject the event during testing.
+    """
     return OddsApiEvent(
         id="test_event_id",
         sport_key="tennis_atp_french_open",
         sport_title="ATP French Open",
-        commence_time="2026-05-30T15:00:00Z",
+        commence_time=commence_time,
         home_team=home_team,
         away_team=away_team,
         bookmakers=bookmakers,
@@ -172,8 +177,6 @@ class TestMapper:
 
         event = to_domain_event(api_event)
 
-        # Betfair offers both h2h and h2h_lay in the fixture. We expect
-        # exactly 2 quotes from Betfair (one per outcome from h2h), not 4.
         betfair_quotes = [q for q in event.quotes if q.bookmaker.name == "Betfair"]
         assert len(betfair_quotes) == 2
 
@@ -250,6 +253,21 @@ class TestMapper:
         with pytest.raises(ValueError, match="insufficient quotes"):
             to_domain_event(api_event)
 
+    def test_in_play_event_raises(self) -> None:
+        """An event that has already started raises ValueError.
+
+        In-play odds change constantly and bookmakers update at different
+        speeds, creating apparent arbitrages that are not exploitable.
+        Iteration 0 restricts detection to pre-match events.
+        """
+        api_event = _build_api_event(
+            commence_time="2020-01-01T00:00:00Z",  # in the past
+            bookmakers=[_build_api_bookmaker("Pinnacle", h2h_prices={"A": "2.10", "B": "2.00"})],
+        )
+
+        with pytest.raises(ValueError, match="already started"):
+            to_domain_event(api_event)
+
     def test_mapped_event_is_consumable_by_arbitrage_module(self) -> None:
         """The Event produced by the mapper works with arbitrage detection."""
         from arb_sentinel.arbitrage import find_arbitrage_opportunity
@@ -319,17 +337,17 @@ class TestHttpClient:
 
     @respx.mock
     def test_fetch_events_skips_unmappable_events(self) -> None:
-        """Events that cannot be mapped (insufficient quotes) are silently skipped."""
+        """Events that cannot be mapped are silently skipped."""
         sport_key = "tennis_atp_french_open"
         valid_event = _load_fixture()
         unmappable_event = {
             "id": "broken_event",
             "sport_key": "tennis_atp_french_open",
             "sport_title": "ATP French Open",
-            "commence_time": "2026-05-30T15:00:00Z",
+            "commence_time": "2099-01-01T00:00:00Z",
             "home_team": "Player X",
             "away_team": "Player Y",
-            "bookmakers": [],  # no bookmakers -> no quotes -> mapping fails
+            "bookmakers": [],
         }
         respx.get(_expected_url(sport_key)).mock(
             return_value=httpx.Response(200, json=[valid_event, unmappable_event])
@@ -339,6 +357,22 @@ class TestHttpClient:
 
         assert len(events) == 1
         assert events[0].description == "Matteo Arnaldi vs Raphael Collignon"
+
+    @respx.mock
+    def test_fetch_events_skips_in_play_events(self) -> None:
+        """Events that have already started are skipped silently."""
+        sport_key = "tennis_atp_french_open"
+        in_play_event = {
+            **_load_fixture(),
+            "commence_time": "2020-01-01T00:00:00Z",  # in the past
+        }
+        respx.get(_expected_url(sport_key)).mock(
+            return_value=httpx.Response(200, json=[in_play_event])
+        )
+
+        events = fetch_events(sport_key=sport_key, api_key="fake_key")
+
+        assert events == []
 
     @respx.mock
     def test_fetch_events_raises_on_unauthorized(self) -> None:

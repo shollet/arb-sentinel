@@ -7,7 +7,7 @@ and an HTTP client wrapper.
 See docs/design/odds-api-integration.md for the complete specification.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import httpx
@@ -85,10 +85,22 @@ def to_domain_event(api_event: OddsApiEvent) -> Event:
     non-h2h market type. Bookmakers offering no h2h market are excluded
     entirely.
 
-    Raises ValueError if the resulting event has fewer than 2 quotes,
-    which is insufficient for arbitrage analysis.
+    Raises ValueError if:
+    - The event has already started (in-play). In-play odds change
+      constantly and bookmakers update at different speeds, producing
+      apparent arbitrages that are not actually exploitable. Iteration 0
+      restricts detection to pre-match events.
+    - The resulting event has fewer than 2 quotes (insufficient for
+      arbitrage analysis).
     """
     description = f"{api_event.home_team} vs {api_event.away_team}"
+
+    if api_event.commence_time <= datetime.now(UTC):
+        raise ValueError(
+            f"Event '{description}' has already started "
+            f"(commence_time={api_event.commence_time.isoformat()}); "
+            f"in-play odds are not supported in IT0."
+        )
 
     outcomes_by_name: dict[str, Outcome] = {}
     quotes: list[Quote] = []
@@ -131,7 +143,7 @@ def fetch_events(sport_key: str, api_key: str) -> list[Event]:
     """Fetch all events for the given tournament from The Odds API.
 
     Returns domain Event objects ready for arbitrage detection. Events
-    that cannot be mapped (e.g., no h2h quotes available) are silently
+    that cannot be mapped (in-play, insufficient quotes) are silently
     skipped so a single unusable event does not prevent the others from
     being returned.
 
