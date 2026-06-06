@@ -6,7 +6,7 @@
 
 **A sport-agnostic arbitrage detection system. Built incrementally. Paper-traded.**
 
-[![Status](https://img.shields.io/badge/status-iteration_1_scoping-f59e0b?style=flat-square)](#current-iteration--iteration-1)
+[![Status](https://img.shields.io/badge/status-iteration_1-10b981?style=flat-square)](#current-iteration--iteration-1)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square)](https://www.python.org/)
 [![uv](https://img.shields.io/badge/managed_by-uv-de5fe9?style=flat-square)](https://docs.astral.sh/uv/)
@@ -37,7 +37,7 @@ flowchart LR
     Start([Start])
 
     IT0["Iteration 0 — Done<br/>Detection core<br/>Tennis · manual<br/>Mechanics validated"]
-    IT1["Iteration 1<br/>Continuous observation<br/>+ auto-notify<br/>(scoping)"]
+    IT1["Iteration 1<br/>Continuous observation<br/>+ auto-notify<br/>(in progress)"]
     ITN["Iteration N+<br/>TBD<br/>Each scope earned"]
 
     Start --> IT0
@@ -67,14 +67,71 @@ what each iteration teaches us. Speculation about iteration 4 today is just nois
 > enough to justify continuing — and can a detection be delivered automatically
 > when one appears?
 
-**Scope is being defined.** Iteration 0 ran detection manually and on demand, which
-samples too little of a continuously-moving market to catch a real opportunity.
-Iteration 1 moves from manual execution to continuous background observation with
-automatic notification. The detailed scope — coverage, observation frequency and
-runtime, the real-vs-phantom filtering criterion, notification channel, and a minimal
-persistence layer — is being finalized and will be documented here following the same
-structure as Iteration 0 (Scope, Stack, Definition of Done, Non-Goals, Validation
-Verdict).
+Iteration 0 ran detection manually and on demand, which samples too little of a
+continuously-moving market to catch a real opportunity. Iteration 1 moves from
+manual execution to continuous, windowed background observation with automatic
+notification — keeping the detection core unchanged and adding only what the
+hypothesis requires.
+
+### Scope
+
+| Aspect | Decision |
+|--------|----------|
+| **Sport / market** | Tennis, h2h (2 outcomes) — domain validated in IT0 |
+| **Coverage** | One active tournament, selected dynamically (`/sports` + priority list) |
+| **Source** | The Odds API (free tier), `regions=eu`, `markets=h2h` |
+| **Mode** | Continuous observation; windowed polling ~15–25 min |
+| **Detection** | IT0 pipeline + phantom filter (outlier-vs-consensus) |
+| **Notification** | Discord webhook for clean candidates only |
+| **Persistence** | JSONL journal (classified detections) + dedup state |
+| **Host** | Always-on, $0 (free tier); manual deploy |
+| **Capital** | $0 (observation / paper) |
+
+### Stack
+
+No new Python dependencies. Iteration 1 keeps the IT0 stack — `uv`, `ruff`,
+`pydantic`, `hypothesis`, `httpx`, `pytest`, `respx` — and earns nothing beyond it:
+
+- **Notification**: a Discord webhook is a single `POST` via `httpx` (already present).
+- **Persistence**: the journal is `json` + a file (standard library).
+- **Scheduling**: the OS handles it (cron / systemd) — outside the application code.
+- **Secret**: the webhook URL is loaded from `.env` / an environment variable, exactly like `ODDS_API_KEY`.
+
+### Definition of Done
+
+> Order follows the spec-driven discipline: docs → code → deployment → docs.
+
+- [ ] Design spec **`docs/design/phantom-filtering.md`** written *before* the code (Goal / Vocabulary / Invariants / Architecture / API / Worked Example / Out of Scope / References / Status)
+- [ ] **ADR** "When to introduce Claude Code" written in `docs/adr/`
+- [ ] **Dynamic discovery**: `/sports` → filter active `tennis_*` → priority-based selection (replaces the hardcoded `tennis_atp_french_open`)
+- [ ] **Phantom filter**: pure functions, property-based tests + fixture case (the ~28% Pinnacle outlier rejected, the ~1.85% candidate preserved)
+- [ ] **Discord webhook** notification for clean candidates (URL as a secret)
+- [ ] **JSONL journal**: each detection classified (candidate / phantom + reason + margin + book count) + dedup (no re-notification of the same opportunity)
+- [ ] **Cycle robustness**: `httpx` timeout + per-cycle `try/except` (a 429 / timeout does not stop the process)
+- [ ] **Budget guard**: read `x-requests-remaining` and pause the cycle below a threshold (e.g. < 50 credits)
+- [ ] **Single-cycle script**, deployed on the always-on host via cron (active window); deployment documented
+- [ ] **CI green** (lint + format + tests), new tests included
+- [ ] **ROADMAP**: Iteration 1 section + decision log finalized
+
+### Validation Criteria
+
+At the end of Iteration 1, we answer:
+
+1. How many clean candidate opportunities surfaced over the observation period?
+2. What were their typical margins?
+3. What fraction of raw detections were phantoms — i.e., is the filter behaving well (false rejects / false positives)?
+4. Were notifications timely and free of spam (dedup working)?
+5. **Does a clean arbitrage surface often enough to justify Iteration 2** (toward execution modeling / backtesting)? If yes, proceed. If no, the honest finding is that clean pre-match arbitrages are too rare under free-tier coverage — at which point a paid tier or a different market becomes a documented decision.
+
+### Explicit Non-Goals
+
+- No in-play / live (pre-match only)
+- No execution (paper or real) — observation + notification only
+- No database (JSONL file)
+- No AI agents (deterministic selection, no adaptive judgment)
+- No multi-sport, no multi-source
+- No Docker / CD / observability stack
+- No `last_update` staleness filter, no probing event counts via `/odds`
 
 ---
 
@@ -195,13 +252,13 @@ Iteration 0 set out to answer five questions. The honest answers:
 | **CI badge in README** | Repository gains visibility / external contributors who benefit from quick status check |
 | **Dependabot or Renovatebot** (automated dependency updates) | Manual SHA bumps become tedious as actions and Python deps grow; need structured update PRs |
 | **CHANGELOG.md** (with `git-cliff`) | First tagged version, or first external contributor / user |
-| **Claude Code** (autonomous agent) | Codebase grows beyond manual maintenance; need for multi-file refactors |
-| **Persistent storage** (SQLite then Postgres if needed) | Manual re-running becomes wasteful; need patterns over time |
+| **Persistent storage** (SQLite then Postgres if needed) | Need to *query* observed history (aggregate margins, replay for backtest, dashboards) — not just append it |
 | **Schema migrations** (Alembic, or Liquibase) | A relational DB exists *and* its schema evolves across environments enough that managing DDL by hand becomes error-prone; versioned, auditable migrations then pay off (a strong maturity signal for a financial domain). Alembic fits a pure-Python stack natively; Liquibase remains viable as a language-agnostic CLI. |
 | **Backtest engine** | Need to quantify edge on historical data (requires an accumulated history of observed quotes) |
-| **AI agents** (single, then multi) | Deterministic detection works; need adaptive judgment |
+| **AI agents** (single, then multi) | Deterministic detection and selection work; need adaptive judgment (e.g. selecting tournaments by observed liquidity / volatility / arb rate) |
+| **Paid API tier or alternative source** | IT1 shows clean arbs exist but free-tier coverage is the binding limit on catching them |
 | **Docker / containerization** | More than 2 services to coordinate, or need for reproducible production |
-| **Continuous deployment** | System needs to run 24/7 reliably |
+| **Continuous deployment** | System needs to run 24/7 reliably and manual deploy becomes the bottleneck |
 
 This list is **not exhaustive** and will evolve. The point is to make the
 "earn complexity" rule explicit: every addition gets a documented signal.
@@ -212,6 +269,96 @@ This list is **not exhaustive** and will evolve. The point is to make the
 
 > Latest decisions at the top. Significant decisions get a dedicated ADR in
 > `docs/adr/` when written.
+
+### 2026-06-06 — Iteration 1 scope finalized
+
+- **Decision**: IT1 moves from manual, on-demand detection to continuous, windowed
+  background observation of a single dynamically-selected tennis tournament, with
+  automatic Discord notification of clean arbitrage candidates and a JSONL journal of
+  classified detections. The hypothesis: under continuous observation with sufficient
+  coverage and false-positive filtering, do real, clean arbitrages surface often
+  enough to justify continuing — and can detection be delivered automatically?
+- **Rationale**: IT0 validated the detection mechanics but left the market question
+  open precisely because manual sampling covers too little of a continuously-moving
+  market. Continuous observation is the only practical way to answer it. Scope is held
+  to a single new variable (automation); the domain stays tennis / h2h (validated),
+  with AI agents, execution, and multi-sport explicitly deferred.
+
+### 2026-06-06 — Dynamic tournament selection (deterministic, not intelligent)
+
+- **Decision**: each cycle calls the free `/sports` endpoint, filters active
+  `tennis_*` keys, and selects one tournament via a configurable priority list (Grand
+  Slams first, then Masters, etc.), replacing the hardcoded `tennis_atp_french_open`.
+  The `/odds` call then runs on the selected key.
+- **Rationale**: `/sports` does not expose per-tournament event counts, so "most
+  events" cannot be read for free; probing each tournament via `/odds` would burn
+  credits. A priority list is a free, deterministic proxy — top-tier tournaments have
+  the most matches and the best book coverage for the consensus median. Adaptive
+  selection by observed signals (liquidity, volatility, historical arb rate) is the
+  job of a future AI agent, deferred under earn-complexity; the IT1 journal will
+  supply the data that later justifies it.
+
+### 2026-06-06 — Phantom filtering by consensus, not staleness
+
+- **Decision**: before detection, reject per-outcome outlier quotes whose implied
+  probability deviates too far below the cross-bookmaker median (a simple relative
+  threshold), guarded by a minimum book count and a profit-ratio cap. See
+  `docs/design/phantom-filtering.md`.
+- **Rationale**: IT0's largest "arbitrage" (~28% on the captured fixture) is a
+  pre-match false positive driven by a single outlier quote — not in-play latency, not
+  a bug. A consensus-median filter attacks the cause and provably cannot manufacture an
+  arbitrage (removing an over-generous quote can only raise the total implied
+  probability). A `last_update` staleness filter is deferred: the outlier quote is
+  fresh-but-wrong, so freshness would not catch it, and it would require per-quote
+  timestamps in the model. MAD / robust statistics are deferred in favor of a simple
+  relative threshold for IT1.
+
+### 2026-06-06 — File-based persistence (JSONL); database deferred
+
+- **Decision**: persist a JSONL journal (one classified detection per line) plus a
+  small dedup-state file, using the standard library. No database in IT1.
+- **Rationale**: IT1's persistence needs are tiny — dedup recent opportunities and
+  append a journal — with a single writer and no analytical querying. A file is
+  sufficient and adds nothing. The Pydantic models already define the schema, so a
+  later file → DB migration is trivial. The DB signal is the need to *query* history
+  (aggregate margins, backtest replay, dashboards), which is IT2/IT3 territory; at that
+  point Postgres (likely TimescaleDB for time-series) is the destination.
+
+### 2026-06-06 — Discord webhook over a bot for notifications
+
+- **Decision**: deliver alerts via an outbound Discord webhook (an `httpx` POST to a
+  channel URL), not a bot. The webhook URL is a secret, loaded like `ODDS_API_KEY`.
+- **Rationale**: IT1 needs one-directional alerting only; a bot's gateway connection,
+  token, and event loop are unnecessary. A webhook is the minimal call, adds no
+  dependency (`httpx` is already present), and is forward-compatible with the
+  observability tooling on the catalogue (Grafana / Alertmanager emit to webhooks
+  natively). Discord is the channel actually used.
+
+### 2026-06-06 — Always-on host on a free tier; manual deploy
+
+- **Decision**: run the poller on an always-on host (Oracle Cloud Always Free or a
+  self-hosted Pi), deployed manually (git pull + cron / systemd). No Docker, CD, or
+  observability stack.
+- **Rationale**: the IT1 hypothesis *is* continuous observation, which a laptop cron
+  (not continuous) cannot deliver and GitHub Actions cannot either — its scheduled runs
+  are delayed / dropped and its ephemeral filesystem breaks the JSONL-file decision. An
+  always-on host with a persistent filesystem is the natural fit and is the catalogue's
+  "must run 24/7" signal; a free tier keeps it $0. Containerization / CD / observability
+  stay deferred behind their own signals to avoid scope creep.
+
+### 2026-06-06 — Claude Code introduced as implementation-under-spec tooling
+
+- **Decision**: adopt Claude Code starting in IT1, with guardrails — Shayan owns
+  architecture and specs (`docs/design/`), Claude Code implements against them; the
+  pre-commit audit (ruff + pytest, "does this respect our design?") and Conventional
+  Commits are unchanged; every diff is reviewed against the spec before commit. See
+  `docs/adr/0001-introduce-claude-code.md`.
+- **Rationale**: IT0 deferred Claude Code for a pedagogical reason (learn the modern
+  stack by hand) that is now satisfied — IT0 was built by hand. Earn-complexity governs
+  *product* complexity; Claude Code is dev tooling and adds nothing to the artifact,
+  dependencies, or architecture. Delegating implementation while retaining design
+  ownership reinforces the platform-engineering narrative the project is meant to
+  demonstrate.
 
 ### 2026-06-06 — Iteration 0 closed; proceeding to Iteration 1
 
@@ -342,7 +489,7 @@ This list is **not exhaustive** and will evolve. The point is to make the
   Learning the modern Python stack (uv, ruff, polars, pydantic) by hand builds
   intuition that pays off when delegating to an agent later. A future ADR
   ("ADR-XXXX: When to introduce Claude Code") will be written when the signal
-  appears.
+  appears. (Superseded 2026-06-06: that ADR is now `docs/adr/0001-introduce-claude-code.md`.)
 
 ### 2026-05-23 — Minimalist README over showcase README
 
@@ -392,6 +539,6 @@ This list is **not exhaustive** and will evolve. The point is to make the
 
 <div align="center">
 
-*Last updated: 2026-06-06 · Iteration 0 complete · Iteration 1 scoping*
+*Last updated: 2026-06-06 · Iteration 1 in progress*
 
 </div>
