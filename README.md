@@ -4,14 +4,21 @@ A sport-agnostic arbitrage detection system. Built incrementally. Paper-traded.
 
 ## Status
 
-🚧 **Iteration 0 — in progress.**
+**Iteration 0 — complete. Iteration 1 — in progress (scoping).**
 
-The project is being built one validated hypothesis at a time. The current iteration
-is the simplest possible: detect arbitrage opportunities on tennis matches manually,
-with no automation, no persistence, and no UI. The goal is to verify that real
-opportunities exist and can be detected reliably before investing in any infrastructure.
+The project is built one validated hypothesis at a time. Iteration 0 delivered the
+detection core — arbitrage math, domain models, and The Odds API integration — fully
+covered by property-based and integration tests. What it validated is the *mechanics*:
+the pipeline reliably computes arbitrage from cross-bookmaker quotes. What stays open is
+the *empirical* question — whether real, clean arbitrages actually surface — because
+running detection manually and on demand samples too little of a continuously-moving
+market to catch one.
 
-See [ROADMAP.md](./ROADMAP.md) for the full scope, principles, and decision log.
+Iteration 1 addresses exactly that: continuous background observation with automatic
+notification when an opportunity appears.
+
+See [ROADMAP.md](./ROADMAP.md) for the full scope, principles, decision log, and the
+Iteration 0 validation verdict.
 
 ## Quick start
 

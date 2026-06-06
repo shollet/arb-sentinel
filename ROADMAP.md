@@ -6,7 +6,7 @@
 
 **A sport-agnostic arbitrage detection system. Built incrementally. Paper-traded.**
 
-[![Status](https://img.shields.io/badge/status-iteration_0-10b981?style=flat-square)](#current-iteration--iteration-0)
+[![Status](https://img.shields.io/badge/status-iteration_1_scoping-f59e0b?style=flat-square)](#current-iteration--iteration-1)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square)](https://www.python.org/)
 [![uv](https://img.shields.io/badge/managed_by-uv-de5fe9?style=flat-square)](https://docs.astral.sh/uv/)
@@ -36,31 +36,49 @@
 flowchart LR
     Start([Start])
 
-    IT0["Iteration 0<br/>Manual Detection<br/>Tennis · 1 script<br/>Console output"]
-    IT1["Iteration 1<br/>TBD<br/>Defined after IT0"]
+    IT0["Iteration 0 — Done<br/>Detection core<br/>Tennis · manual<br/>Mechanics validated"]
+    IT1["Iteration 1<br/>Continuous observation<br/>+ auto-notify<br/>(scoping)"]
     ITN["Iteration N+<br/>TBD<br/>Each scope earned"]
 
     Start --> IT0
-    IT0 -->|hypothesis validated?| IT1
+    IT0 -->|mechanics validated| IT1
     IT1 -.->|earned| ITN
 
+    classDef done fill:#10b981,stroke:#047857,color:#fff,stroke-width:1px
     classDef current fill:#10b981,stroke:#047857,color:#fff,stroke-width:3px
     classDef next fill:#94a3b8,stroke:#475569,color:#fff,stroke-width:1px
     classDef future fill:#cbd5e1,stroke:#94a3b8,color:#475569,stroke-width:1px,stroke-dasharray: 5 5
 
-    class Start current
-    class IT0 current
-    class IT1 next
+    class Start done
+    class IT0 done
+    class IT1 current
     class ITN future
 ```
 
-Future iterations are intentionally **not pre-planned**. They will be defined
-based on what Iteration 0 teaches us. Speculation about iteration 4 today is
-just noise.
+Future iterations are intentionally **not pre-planned**. They are defined based on
+what each iteration teaches us. Speculation about iteration 4 today is just noise.
 
 ---
 
-## Current Iteration — Iteration 0
+## Current Iteration — Iteration 1
+
+> **Hypothesis**: under continuous observation, with sufficient coverage and
+> false-positive filtering, do real, clean arbitrage opportunities surface often
+> enough to justify continuing — and can a detection be delivered automatically
+> when one appears?
+
+**Scope is being defined.** Iteration 0 ran detection manually and on demand, which
+samples too little of a continuously-moving market to catch a real opportunity.
+Iteration 1 moves from manual execution to continuous background observation with
+automatic notification. The detailed scope — coverage, observation frequency and
+runtime, the real-vs-phantom filtering criterion, notification channel, and a minimal
+persistence layer — is being finalized and will be documented here following the same
+structure as Iteration 0 (Scope, Stack, Definition of Done, Non-Goals, Validation
+Verdict).
+
+---
+
+## Iteration 0 — Complete
 
 > **Hypothesis**: arbitrage opportunities are detectable in practice on tennis
 > matches using freely available odds data, at a frequency that justifies
@@ -98,6 +116,10 @@ flowchart LR
 Dependencies (managed by `uv`): `httpx`, `pydantic`, `polars`, `pytest`,
 `hypothesis`, `ruff`.
 
+> **Note**: `polars` was provisioned in the stack but ultimately unused in
+> Iteration 0 — the detection math runs on Python's `Decimal`. Removing it or
+> putting it to genuine use is queued for a later iteration.
+
 ### Definition of Done
 
 - [x] Repository initialized with `uv` and proper structure
@@ -116,15 +138,49 @@ Dependencies (managed by `uv`): `httpx`, `pydantic`, `polars`, `pytest`,
 - No Docker or orchestration
 - No deployment — runs locally only
 
-### Validation Criteria
+### Validation Verdict
 
-At the end of Iteration 0, we answer:
+Iteration 0 set out to answer five questions. The honest answers:
 
-1. How many real opportunities surfaced during the observation period?
-2. What were typical implied-probability gaps?
-3. Were the Odds API quotes reliable?
-4. Did any flagged "opportunity" turn out to be a calculation bug?
-5. **Does the hypothesis hold? If yes, proceed to Iteration 1. If no, pivot.**
+1. **How many real opportunities surfaced during the observation period?**
+   None confirmed. Manual, on-demand runs sample too little of a continuously-moving
+   market to expect to catch one — a limitation of manual execution, not a negative
+   result about the market.
+
+2. **What were typical implied-probability gaps?**
+   Single-bookmaker markets priced normally, with the implied-probability sum above 1
+   (the built-in overround). No clean cross-bookmaker total below 1 was captured during
+   manual runs.
+
+3. **Were the Odds API quotes reliable?**
+   The integration parsed and validated every response reliably (schema validation,
+   `Decimal` coercion). One reliability hazard *was* found and handled: in-play events
+   produce phantom arbitrages of 20–50% from bookmaker update-latency differences;
+   these are now filtered. Whether the prices themselves yield clean pre-match
+   arbitrages under sustained observation is part of what Iteration 1 will assess.
+
+4. **Did any flagged "opportunity" turn out to be a calculation bug?**
+   No. The largest detection seen — a ~28% ratio on the captured test fixture — is
+   mathematically correct but is a **false positive** driven by a single outlier quote
+   (one bookmaker pricing a near coin-flip while the consensus priced a heavy
+   favorite). The math correctly flags a real pricing discrepancy that is not
+   exploitable. This motivates an explicit real-vs-phantom filter in Iteration 1.
+
+5. **Does the hypothesis hold?**
+   Partially. The **mechanics** hypothesis holds: detection works end-to-end and is
+   covered by property-based and integration tests. The **market** hypothesis — that
+   real, clean arbitrages surface often enough to justify continuing — is *not yet
+   established*, and cannot be from manual runs. **Decision: proceed to Iteration 1**,
+   whose explicit purpose is to answer it through continuous observation.
+
+> **In one paragraph.** Iteration 0 is complete. The detection mechanics are validated
+> end-to-end — math, domain models, and Odds API integration, all covered by
+> property-based and integration tests. The empirical question — whether real, clean
+> arbitrages actually surface — remains open: manual on-demand runs sample too little
+> of a continuously-moving market to catch one, and the largest detection the pipeline
+> has produced so far comes from a captured fixture and is a false positive driven by a
+> single outlier quote, not an exploitable arbitrage. Determining whether clean
+> arbitrages surface requires continuous observation — the subject of Iteration 1.
 
 ---
 
@@ -141,7 +197,8 @@ At the end of Iteration 0, we answer:
 | **CHANGELOG.md** (with `git-cliff`) | First tagged version, or first external contributor / user |
 | **Claude Code** (autonomous agent) | Codebase grows beyond manual maintenance; need for multi-file refactors |
 | **Persistent storage** (SQLite then Postgres if needed) | Manual re-running becomes wasteful; need patterns over time |
-| **Backtest engine** | Iteration 0 hypothesis validated; need to quantify edge on historical data |
+| **Schema migrations** (Alembic, or Liquibase) | A relational DB exists *and* its schema evolves across environments enough that managing DDL by hand becomes error-prone; versioned, auditable migrations then pay off (a strong maturity signal for a financial domain). Alembic fits a pure-Python stack natively; Liquibase remains viable as a language-agnostic CLI. |
+| **Backtest engine** | Need to quantify edge on historical data (requires an accumulated history of observed quotes) |
 | **AI agents** (single, then multi) | Deterministic detection works; need adaptive judgment |
 | **Docker / containerization** | More than 2 services to coordinate, or need for reproducible production |
 | **Continuous deployment** | System needs to run 24/7 reliably |
@@ -155,6 +212,23 @@ This list is **not exhaustive** and will evolve. The point is to make the
 
 > Latest decisions at the top. Significant decisions get a dedicated ADR in
 > `docs/adr/` when written.
+
+### 2026-06-06 — Iteration 0 closed; proceeding to Iteration 1
+
+- **Decision**: Iteration 0 is complete. Its mechanics hypothesis is validated —
+  detection works end-to-end across math, domain models, and the Odds API
+  integration, covered by property-based and integration tests. Its market
+  hypothesis — that real, clean arbitrages surface often enough to matter — is
+  **not** established and cannot be from manual, on-demand runs. We proceed to
+  Iteration 1, whose explicit purpose is to answer that open question through
+  continuous observation.
+- **Rationale**: manual sampling covers too little of a continuously-moving market
+  to observe a real opportunity, and the largest detection produced so far comes
+  from a captured test fixture and is a false positive driven by a single outlier
+  quote (one bookmaker pricing a near coin-flip while the consensus priced a heavy
+  favorite) — mathematically correct, not exploitable, and not a pipeline bug.
+  Closing IT0 honestly (mechanics yes, frequency open) keeps the decision log an
+  accurate record and frames IT1 as the validation step rather than a feature add.
 
 ### 2026-05-30 — In-play events filtered to avoid phantom arbitrages
 
@@ -318,6 +392,6 @@ This list is **not exhaustive** and will evolve. The point is to make the
 
 <div align="center">
 
-*Last updated: 2026-05-23 · Iteration 0 in progress*
+*Last updated: 2026-06-06 · Iteration 0 complete · Iteration 1 scoping*
 
 </div>
