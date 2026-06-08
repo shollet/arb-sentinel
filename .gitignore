@@ -19,3 +19,9 @@ wheels/
 .env.local
 .env.*.local
 !.env.example
+
+# Claude Code — local/personal, not shared
+.claude/settings.local.json
+
+# Plan-mode session artifacts
+*-fox.md
