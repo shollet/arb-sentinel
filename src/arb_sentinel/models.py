@@ -12,6 +12,7 @@ the standard sports betting taxonomy used by APIs like The Odds API.
 """
 
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -99,3 +100,27 @@ class ArbitrageOpportunity(BaseModel):
         gt=Decimal(0),
         description="Profit in absolute terms (total_stake * guaranteed_profit_ratio).",
     )
+
+
+class CleanedEvent(BaseModel):
+    """An event after generous outlier quotes have been removed, with cleaning metadata."""
+
+    model_config = ConfigDict(frozen=True)
+
+    event: Event
+    counts_before: dict[Outcome, int]
+    counts_after: dict[Outcome, int]
+    low_confidence: bool
+
+
+class PhantomFilterResult(BaseModel):
+    """The outcome of phantom filtering for one event, at a point in time."""
+
+    model_config = ConfigDict(frozen=True)
+
+    classification: Literal["candidate", "phantom", "no_arbitrage", "low_confidence"]
+    reason: str
+    book_counts: dict[Outcome, int]
+    raw_total_implied_probability: Decimal
+    clean_total_implied_probability: Decimal | None
+    opportunity: ArbitrageOpportunity | None

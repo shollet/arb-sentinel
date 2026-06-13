@@ -56,16 +56,21 @@ raise (or keep) the sum. Therefore **if the raw event is not an arbitrage, the c
 event is not one either** — the filter can only *remove* apparent arbitrages, never
 create them. This is the core guarantee against fabricating phantoms.
 
-### P2. Single-pass idempotence
+### P2. Single-pass stability
 
 The consensus median is computed **once** over the original quote set per outcome;
-outlier rejection is a single pass against that fixed consensus. Therefore:
+outlier rejection is a single pass against that fixed consensus. Every quote that
+survives cleaning satisfies the generosity bound against that original consensus:
 
-$$\text{clean}(\text{clean}(e)) = \text{clean}(e)$$
+$$\forall q \in \text{clean}(e).\text{quotes}:\quad p(q) \geq \text{consensus}_{\text{original}}(o_q) \cdot (1 - t)$$
 
-Recomputing the median on survivors is intentionally avoided, since it could make a
-borderline survivor an outlier on a second pass (instability). Single-pass keeps the
-result deterministic and idempotent.
+This is the correct formulation of the stability guarantee. The two-pass form
+$\text{clean}(\text{clean}(e)) = \text{clean}(e)$ is related but subtly weaker:
+when generous outliers are removed, the consensus can shift upward, making a
+borderline survivor appear as an outlier in a second pass. That second-pass failure
+mode is not a defect — `clean_quotes` is always called on the raw event, never
+recursively on its own output. The single-pass design ensures the result is
+deterministic and that no survivor contradicts the consensus used to produce it.
 
 ### P3. Median robustness to a single outlier
 

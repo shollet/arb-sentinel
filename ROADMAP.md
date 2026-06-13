@@ -104,7 +104,7 @@ No new Python dependencies. Iteration 1 keeps the IT0 stack — `uv`, `ruff`,
 - [x] Design spec **`docs/design/phantom-filtering.md`** written *before* the code (Goal / Vocabulary / Invariants / Architecture / API / Worked Example / Out of Scope / References / Status)
 - [x] **ADR** "When to introduce Claude Code" written in `docs/adr/`
 - [x] **Dynamic discovery**: `/sports` → filter active `tennis_*` → priority-based selection (replaces the hardcoded `tennis_atp_french_open`)
-- [ ] **Phantom filter**: pure functions, property-based tests + fixture case (the ~28% Pinnacle outlier rejected, the ~1.85% candidate preserved)
+- [x] **Phantom filter**: pure functions, property-based tests + fixture case (the ~28% Pinnacle outlier rejected, the ~1.85% candidate preserved)
 - [ ] **Discord webhook** notification for clean candidates (URL as a secret)
 - [ ] **JSONL journal**: each detection classified (candidate / phantom + reason + margin + book count) + dedup (no re-notification of the same opportunity)
 - [ ] **Cycle robustness**: `httpx` timeout + per-cycle `try/except` (a 429 / timeout does not stop the process)
@@ -269,6 +269,19 @@ This list is **not exhaustive** and will evolve. The point is to make the
 
 > Latest decisions at the top. Significant decisions get a dedicated ADR in
 > `docs/adr/` when written.
+
+### 2026-06-13 — Phantom filter P2 refined: single-pass stability, not two-pass idempotence
+
+- **Decision**: the phantom-filtering spec's P2 invariant is restated from
+  `clean(clean(e)) = clean(e)` to single-pass stability — every surviving quote
+  satisfies the generosity bound against the consensus computed *before* cleaning.
+- **Rationale**: implementing the property-based test surfaced that two-pass idempotence
+  fails even on realistic tennis odds (removing a generous outlier raises the median, so
+  a borderline survivor can become an outlier on a recomputed second pass). Since
+  `clean_quotes` is only ever called on the raw event, never recursively, single-pass
+  stability is the meaningful guarantee — and it is provable and tested. The spec and
+  test now both state it. (Hypothesis also surfaced a 1-ULP Decimal artifact in the P3
+  bound, absorbed with a documented tolerance.)
 
 ### 2026-06-06 — Iteration 1 scope finalized
 
