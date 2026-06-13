@@ -48,7 +48,7 @@ the property-based tests in `tests/test_phantom_filtering.py`.
 Let `raw_T` be the total implied probability of the best-quote-per-outcome set over
 all quotes, and `clean_T` the same over the clean quote set. Then:
 
-$$\text{clean\_T} \geq \text{raw\_T}$$
+$$T_{\text{clean}} \geq T_{\text{raw}}$$
 
 Removing quotes can only lower (or keep) the maximum odds available per outcome, which
 can only raise (or keep) the implied probability of the best surviving quote, hence
@@ -237,7 +237,7 @@ The IT0 fixture (Arnaldi vs Collignon), pre-match, `relative_threshold = 0.20`,
 **Clean detection.** Best surviving quotes: Arnaldi 1.25 (Matchbook) + Collignon 5.5
 (Betclic).
 
-$$\text{clean\_T} = \tfrac{1}{1.25} + \tfrac{1}{5.5} \approx 0.800 + 0.182 = 0.982 < 1$$
+$$T_{\text{clean}} = \tfrac{1}{1.25} + \tfrac{1}{5.5} \approx 0.800 + 0.182 = 0.982 < 1$$
 
 Profit ratio `= 1/0.982 - 1 ≈ 0.0185` (1.85%), within the 10% cap, book counts well
 above 4 → **candidate** (notified).
