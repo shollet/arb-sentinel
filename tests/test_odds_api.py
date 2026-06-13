@@ -258,7 +258,7 @@ class TestMapper:
 
         In-play odds change constantly and bookmakers update at different
         speeds, creating apparent arbitrages that are not exploitable.
-        Iteration 0 restricts detection to pre-match events.
+        Only pre-match events are supported.
         """
         api_event = _build_api_event(
             commence_time="2020-01-01T00:00:00Z",  # in the past

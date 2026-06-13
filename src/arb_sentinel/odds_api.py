@@ -117,8 +117,8 @@ def to_domain_event(api_event: OddsApiEvent) -> Event:
     Raises ValueError if:
     - The event has already started (in-play). In-play odds change
       constantly and bookmakers update at different speeds, producing
-      apparent arbitrages that are not actually exploitable. Iteration 0
-      restricts detection to pre-match events.
+      apparent arbitrages that are not actually exploitable. Only
+      pre-match events are supported.
     - The resulting event has fewer than 2 quotes (insufficient for
       arbitrage analysis).
     """
@@ -128,7 +128,7 @@ def to_domain_event(api_event: OddsApiEvent) -> Event:
         raise ValueError(
             f"Event '{description}' has already started "
             f"(commence_time={api_event.commence_time.isoformat()}); "
-            f"in-play odds are not supported in IT0."
+            f"in-play events are not supported."
         )
 
     outcomes_by_name: dict[str, Outcome] = {}
