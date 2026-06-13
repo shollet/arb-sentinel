@@ -17,3 +17,22 @@ regenerated. The relevant endpoint is:
 ```
 GET /v4/sports/tennis_atp_french_open/odds?regions=eu&markets=h2h&oddsFormat=decimal
 ```
+
+## `odds_api_sports_sample.json`
+
+A hand-authored representative response from The Odds API `/sports` endpoint.
+Used to test `fetch_active_sports` in `tests/test_tournament_selection.py` without
+consuming API quota (the `/sports` endpoint is free, but tests must remain offline).
+
+Contains 5 entries covering the key filtering scenarios:
+
+- 2 active tennis tournaments (`tennis_atp_french_open`, `tennis_atp_500_queens`)
+- 1 inactive tennis tournament (`tennis_wta_french_open`)
+- 1 active non-tennis sport (`soccer_epl`)
+- 1 inactive non-tennis sport (`basketball_nba`)
+
+The relevant endpoint is:
+
+```
+GET /v4/sports?apiKey=...
+```

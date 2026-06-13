@@ -7,6 +7,7 @@ and an HTTP client wrapper.
 See docs/design/odds-api-integration.md for the complete specification.
 """
 
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -16,6 +17,34 @@ from pydantic import BaseModel, ConfigDict
 from arb_sentinel.models import Bookmaker, Event, Outcome, Quote
 
 ODDS_API_BASE_URL = "https://api.the-odds-api.com/v4"
+
+# Grand Slams first — best bookmaker coverage and most simultaneous matches.
+# The selection logic does not depend on these exact spellings; they are a
+# configurable preference. Only tennis_atp_french_open is verified from the
+# IT0 fixture; others are confirmed against the live /sports response.
+GRAND_SLAM_PRIORITY: list[str] = [
+    "tennis_atp_aus_open",
+    "tennis_wta_aus_open",
+    "tennis_atp_french_open",
+    "tennis_wta_french_open",
+    "tennis_atp_wimbledon",
+    "tennis_wta_wimbledon",
+    "tennis_atp_us_open",
+    "tennis_wta_us_open",
+]
+
+
+class OddsApiSport(BaseModel):
+    """A competition entry from the /sports endpoint. Frozen, mirrors the API shape."""
+
+    model_config = ConfigDict(frozen=True)
+
+    key: str
+    group: str
+    title: str
+    description: str
+    active: bool
+    has_outrights: bool
 
 
 class OddsApiOutcome(BaseModel):
@@ -170,3 +199,38 @@ def fetch_events(sport_key: str, api_key: str) -> list[Event]:
             continue
 
     return domain_events
+
+
+def fetch_active_sports(api_key: str) -> list[OddsApiSport]:
+    """Fetch the competitions list from The Odds API /sports endpoint.
+
+    Does not count against the usage quota. Raises httpx.HTTPStatusError
+    on non-2xx responses; the caller decides how to react.
+    """
+    response = httpx.get(f"{ODDS_API_BASE_URL}/sports", params={"apiKey": api_key})
+    response.raise_for_status()
+    return [OddsApiSport.model_validate(item) for item in response.json()]
+
+
+def select_tournament(
+    active_sports: Iterable[OddsApiSport],
+    priority: Sequence[str],
+) -> str | None:
+    """The single tennis tournament sport_key to observe, or None. Pure and deterministic.
+
+    Filters to active tennis tournaments (key starts with 'tennis_'), then:
+    - returns the first key in priority order that is active; else
+    - returns the first active tennis key in stable (sorted) order; else
+    - returns None (no tennis tournament active, cycle spends 0 credits).
+    """
+    active_tennis = sorted(
+        (s for s in active_sports if s.active and s.key.startswith("tennis_")),
+        key=lambda s: s.key,
+    )
+    if not active_tennis:
+        return None
+    active_keys = {s.key for s in active_tennis}
+    for key in priority:
+        if key in active_keys:
+            return key
+    return active_tennis[0].key

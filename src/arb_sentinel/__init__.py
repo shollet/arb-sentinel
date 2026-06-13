@@ -6,9 +6,13 @@ from decimal import Decimal
 from dotenv import load_dotenv
 
 from arb_sentinel.arbitrage import find_arbitrage_opportunity
-from arb_sentinel.odds_api import fetch_events
+from arb_sentinel.odds_api import (
+    GRAND_SLAM_PRIORITY,
+    fetch_active_sports,
+    fetch_events,
+    select_tournament,
+)
 
-DEFAULT_SPORT_KEY = "tennis_atp_french_open"
 DEFAULT_TOTAL_STAKE = Decimal("1000")
 
 
@@ -16,8 +20,8 @@ def main() -> None:
     """Fetch live tennis odds and print any arbitrage opportunities to the console.
 
     The entry point for `python -m arb_sentinel`. Loads the API key from
-    a local .env file, fetches events for the default tournament, runs
-    arbitrage detection on each, and prints a summary.
+    a local .env file, discovers the active tennis tournament, fetches its
+    events, runs arbitrage detection on each, and prints a summary.
     """
     load_dotenv()
     api_key = os.environ.get("ODDS_API_KEY")
@@ -25,8 +29,14 @@ def main() -> None:
         print("ERROR: ODDS_API_KEY not set. Copy .env.example to .env and add your key.")
         return
 
-    print(f"Fetching events for {DEFAULT_SPORT_KEY}...")
-    events = fetch_events(sport_key=DEFAULT_SPORT_KEY, api_key=api_key)
+    sports = fetch_active_sports(api_key=api_key)
+    sport_key = select_tournament(sports, GRAND_SLAM_PRIORITY)
+    if sport_key is None:
+        print("No active tennis tournament found. Skipping poll (0 credits).")
+        return
+
+    print(f"Fetching events for {sport_key}...")
+    events = fetch_events(sport_key=sport_key, api_key=api_key)
     print(f"Found {len(events)} events to analyze.")
     print()
 

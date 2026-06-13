@@ -101,9 +101,9 @@ No new Python dependencies. Iteration 1 keeps the IT0 stack — `uv`, `ruff`,
 
 > Order follows the spec-driven discipline: docs → code → deployment → docs.
 
-- [ ] Design spec **`docs/design/phantom-filtering.md`** written *before* the code (Goal / Vocabulary / Invariants / Architecture / API / Worked Example / Out of Scope / References / Status)
-- [ ] **ADR** "When to introduce Claude Code" written in `docs/adr/`
-- [ ] **Dynamic discovery**: `/sports` → filter active `tennis_*` → priority-based selection (replaces the hardcoded `tennis_atp_french_open`)
+- [x] Design spec **`docs/design/phantom-filtering.md`** written *before* the code (Goal / Vocabulary / Invariants / Architecture / API / Worked Example / Out of Scope / References / Status)
+- [x] **ADR** "When to introduce Claude Code" written in `docs/adr/`
+- [x] **Dynamic discovery**: `/sports` → filter active `tennis_*` → priority-based selection (replaces the hardcoded `tennis_atp_french_open`)
 - [ ] **Phantom filter**: pure functions, property-based tests + fixture case (the ~28% Pinnacle outlier rejected, the ~1.85% candidate preserved)
 - [ ] **Discord webhook** notification for clean candidates (URL as a secret)
 - [ ] **JSONL journal**: each detection classified (candidate / phantom + reason + margin + book count) + dedup (no re-notification of the same opportunity)
@@ -539,6 +539,6 @@ This list is **not exhaustive** and will evolve. The point is to make the
 
 <div align="center">
 
-*Last updated: 2026-06-06 · Iteration 1 in progress*
+*Last updated: 2026-06-13 · Iteration 1 in progress*
 
 </div>
