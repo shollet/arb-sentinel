@@ -106,7 +106,7 @@ No new Python dependencies. Iteration 1 keeps the IT0 stack — `uv`, `ruff`,
 - [x] **Dynamic discovery**: `/sports` → filter active `tennis_*` → priority-based selection (replaces the hardcoded `tennis_atp_french_open`)
 - [x] **Phantom filter**: pure functions, property-based tests + fixture case (the ~28% Pinnacle outlier rejected, the ~1.85% candidate preserved)
 - [ ] **Discord webhook** notification for clean candidates (URL as a secret)
-- [ ] **JSONL journal**: each detection classified (candidate / phantom + reason + margin + book count) + dedup (no re-notification of the same opportunity)
+- [x] **JSONL journal**: each detection classified (candidate / phantom + reason + margin + book count) + dedup (no re-notification of the same opportunity)
 - [ ] **Cycle robustness**: `httpx` timeout + per-cycle `try/except` (a 429 / timeout does not stop the process)
 - [ ] **Budget guard**: read `x-requests-remaining` and pause the cycle below a threshold (e.g. < 50 credits)
 - [ ] **Single-cycle script**, deployed on the always-on host via cron (active window); deployment documented
@@ -580,6 +580,6 @@ This list is **not exhaustive** and will evolve. The point is to make the
 
 <div align="center">
 
-*Last updated: 2026-06-13 · Iteration 1 in progress*
+*Last updated: 2026-06-20 · Iteration 1 in progress*
 
 </div>
