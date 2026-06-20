@@ -22,3 +22,6 @@ wheels/
 
 # Claude Code — local/personal, not shared
 .claude/settings.local.json
+
+# Local observation data (journal + dedup state)
+data/

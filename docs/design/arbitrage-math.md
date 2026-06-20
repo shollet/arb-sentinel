@@ -231,6 +231,13 @@ alongside the other domain types. It is a snapshot of the detection at a
 point in time: capturing best quotes and computed values is important for
 logging and traceability since odds can change between detection and action.
 
+`ArbitrageOpportunity` carries JSON field serializers and validators on
+`best_quotes` and `optimal_stakes` so the model round-trips through the
+detection journal's JSONL persistence (see `docs/design/journal.md`). In
+JSON mode (`model_dump_json` / `model_validate_json`), Outcome-keyed dicts
+are serialized to outcome-name string keys and reconstructed on load. Python
+mode (`model_dump`) returns the original `dict[Outcome, ...]` types unchanged.
+
 ## Worked Example
 
 Consider a two-bookmaker tennis match:

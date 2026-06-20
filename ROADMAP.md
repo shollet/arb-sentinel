@@ -270,6 +270,34 @@ This list is **not exhaustive** and will evolve. The point is to make the
 > Latest decisions at the top. Significant decisions get a dedicated ADR in
 > `docs/adr/` when written.
 
+### 2026-06-20 — Journal persistence: Functional Core / Imperative Shell, no writer abstraction
+
+- **Decision**: the detection journal and notification dedup are built as a Functional
+  Core / Imperative Shell. The decisions (`to_journal_entry`, `is_notifiable`,
+  `dedup_key`) are pure functions depending on nothing from the I/O layer; the file I/O
+  (`append_journal_entry`, `load_dedup_state`, `save_dedup_state`) is thin wrappers
+  called only from the cycle orchestration. Values are injected for purity — the clock
+  (`detected_at`) and the file location (`Path`) are caller-supplied parameters, not read
+  or decided inside the functions. No `JournalWriter` / `Repository` / `Clock` interface
+  is introduced. The Decimal-never-float rule extends to disk: every Decimal serializes
+  to a JSON string (Pydantic default), preserving exact values on round-trip. See
+  `docs/design/journal.md`.
+- **Rationale**: the SOLID principle that pays here is Single Responsibility (the
+  pure/I/O split). Dependency Inversion is satisfied by *removing* the core→I/O
+  dependency rather than abstracting it — a pure function has nothing to invert, mock, or
+  inject — which is strictly stronger than a DI-by-interface arrangement and adds no
+  ceremony. Liskov and Interface Segregation do not apply: there is no hierarchy and no
+  interface, by design (their spirit is kept via narrow signatures). An abstract writer
+  interface would be speculative complexity, forbidden under earn-complexity, because
+  there is exactly one concrete implementation of each piece today. The decisive test for
+  every future seam: *do I have two concrete implementations now?* If not, the
+  parameterized concrete function suffices; the abstraction waits for the second
+  implementation (e.g. a database writer in a later iteration). `dedup_key` is the one
+  seam deliberately placed, because the roadmap names its future change (a price
+  fingerprint folded into the key, re-notifying on materially better prices). No new
+  dependencies: stdlib `json` / `pathlib` / `datetime` plus the already-present
+  `pydantic`.
+
 ### 2026-06-13 — Phantom filter P2 refined: single-pass stability, not two-pass idempotence
 
 - **Decision**: the phantom-filtering spec's P2 invariant is restated from

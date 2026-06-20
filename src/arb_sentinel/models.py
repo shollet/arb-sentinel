@@ -11,10 +11,11 @@ Market entity will be inserted between Event and Outcomes to align with
 the standard sports betting taxonomy used by APIs like The Odds API.
 """
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 
 class Bookmaker(BaseModel):
@@ -101,6 +102,34 @@ class ArbitrageOpportunity(BaseModel):
         description="Profit in absolute terms (total_stake * guaranteed_profit_ratio).",
     )
 
+    # Field serializers convert Outcome keys → outcome name strings for JSON,
+    # making the model round-trippable through model_dump_json / model_validate_json.
+    @field_serializer("best_quotes", when_used="json")
+    def _ser_best_quotes(self, v: "dict[Outcome, Quote]") -> "dict[str, Quote]":
+        return {outcome.name: quote for outcome, quote in v.items()}
+
+    @field_serializer("optimal_stakes", when_used="json")
+    def _ser_optimal_stakes(self, v: "dict[Outcome, Decimal]") -> "dict[str, Decimal]":
+        return {outcome.name: stake for outcome, stake in v.items()}
+
+    @field_validator("best_quotes", mode="before")
+    @classmethod
+    def _val_best_quotes(cls, v: object) -> object:
+        if not isinstance(v, dict) or not v:
+            return v
+        if not isinstance(next(iter(v)), str):
+            return v
+        return {Outcome(name=k): val for k, val in v.items()}
+
+    @field_validator("optimal_stakes", mode="before")
+    @classmethod
+    def _val_optimal_stakes(cls, v: object) -> object:
+        if not isinstance(v, dict) or not v:
+            return v
+        if not isinstance(next(iter(v)), str):
+            return v
+        return {Outcome(name=k): Decimal(str(val)) for k, val in v.items()}
+
 
 class CleanedEvent(BaseModel):
     """An event after generous outlier quotes have been removed, with cleaning metadata."""
@@ -121,6 +150,25 @@ class PhantomFilterResult(BaseModel):
     classification: Literal["candidate", "phantom", "no_arbitrage", "low_confidence"]
     reason: str
     book_counts: dict[Outcome, int]
+    raw_total_implied_probability: Decimal
+    clean_total_implied_probability: Decimal | None
+    opportunity: ArbitrageOpportunity | None
+
+
+class JournalEntry(BaseModel):
+    """One classified detection, at a point in time. Serialized as one JSONL line.
+
+    Frozen and logic-free. Decimal fields serialize to JSON strings (never floats),
+    so the on-disk record preserves the exact computed values.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    detected_at: datetime
+    match_id: str
+    classification: Literal["candidate", "phantom", "no_arbitrage", "low_confidence"]
+    reason: str
+    book_counts: dict[str, int]
     raw_total_implied_probability: Decimal
     clean_total_implied_probability: Decimal | None
     opportunity: ArbitrageOpportunity | None
