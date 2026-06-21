@@ -13,8 +13,11 @@ so FIRST read:
 
 - `CLAUDE.md` (the non-negotiables and current-iteration constraints), and
 - the design spec(s) under `docs/design/` that apply to the code under review:
-  `phantom-filtering.md` for the filter, `arbitrage-math.md` for the math,
-  `odds-api-integration.md` for API fetching / mapping.
+  `arbitrage-math.md` for the math (`arbitrage.py`), `phantom-filtering.md` for the
+  filter (`phantom_filtering.py`), `odds-api-integration.md` for API fetching / mapping
+  and `tournament-selection.md` for tournament discovery / selection (both in `odds_api.py`),
+  `journal.md` for the detection journal and dedup (`journal.py`), and
+  `notification.md` for Discord notification delivery (`notification.py`).
 
 Then read the code under review.
 
@@ -25,8 +28,9 @@ Check the code, point by point, against:
    any divergence from the documented API, and anything implemented that the spec
    lists as out of scope.
 2. **The CLAUDE.md non-negotiables**: Decimal never float; Pydantic models frozen and
-   logic-free; domain logic as pure functions with all I/O isolated in `odds_api.py`;
-   English only; comments only for the non-obvious. Plus the IT1 constraints: no new
+   logic-free; domain logic as pure functions, with all I/O isolated in the integration
+   I-O layer (`odds_api.py`, `journal.py`, `notification.py`) and kept out of the pure
+   core; English only; comments only for the non-obvious. Plus the IT1 constraints: no new
    dependencies, no database, no execution, pre-match only.
 
 Report:
