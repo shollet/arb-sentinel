@@ -105,7 +105,7 @@ No new Python dependencies. Iteration 1 keeps the IT0 stack — `uv`, `ruff`,
 - [x] **ADR** "When to introduce Claude Code" written in `docs/adr/`
 - [x] **Dynamic discovery**: `/sports` → filter active `tennis_*` → priority-based selection (replaces the hardcoded `tennis_atp_french_open`)
 - [x] **Phantom filter**: pure functions, property-based tests + fixture case (the ~28% Pinnacle outlier rejected, the ~1.85% candidate preserved)
-- [ ] **Discord webhook** notification for clean candidates (URL as a secret)
+- [x] **Discord webhook** notification for clean candidates (URL as a secret)
 - [x] **JSONL journal**: each detection classified (candidate / phantom + reason + margin + book count) + dedup (no re-notification of the same opportunity)
 - [ ] **Cycle robustness**: `httpx` timeout + per-cycle `try/except` (a 429 / timeout does not stop the process)
 - [ ] **Budget guard**: read `x-requests-remaining` and pause the cycle below a threshold (e.g. < 50 credits)
@@ -269,6 +269,26 @@ This list is **not exhaustive** and will evolve. The point is to make the
 
 > Latest decisions at the top. Significant decisions get a dedicated ADR in
 > `docs/adr/` when written.
+
+### 2026-06-20 — Discord notification delivery: Functional Core / Imperative Shell, bool-return contract
+
+- **Decision**: the Discord webhook delivery is a pure formatter (`to_discord_payload`,
+  `PhantomFilterResult` → embed `dict`) and a thin I/O sender (`send_notification`, which
+  POSTs with an explicit timeout and returns a delivery-success bool, never raising on a
+  delivery failure). The dedup key is recorded only on a delivered notification:
+  `journal.md`'s cycle wiring now gates `notified.add(key)` on `send_notification`'s return
+  (a failed send leaves the candidate unrecorded and retried next cycle). The payload is a
+  plain `dict`, not a frozen model — outbound, write-only data built from already-validated
+  domain objects (contrast `JournalEntry` / the Odds API schemas, which validate inbound
+  data). The webhook URL is a secret loaded like `ODDS_API_KEY` (`DISCORD_WEBHOOK_URL`) and
+  never logged. See `docs/design/notification.md`. Live delivery verified via
+  `examples/004_discord_webhook_poc.py`.
+- **Rationale**: same earn-complexity reasoning as the journal. One channel, one process →
+  no `Notifier` / Strategy abstraction; the functions are named for Discord and the seam is
+  placed for a future second channel, introduced only when one exists. The bool-return
+  contract contains delivery failures inside the I/O function, keeping the cycle's safety net
+  minimal and the dedup-ordering invariant locally testable. No in-cycle retry: the natural
+  retry is the next cycle, past Discord's per-webhook rate window. No new dependencies.
 
 ### 2026-06-20 — Journal persistence: Functional Core / Imperative Shell, no writer abstraction
 

@@ -258,6 +258,7 @@ The entry point composes them, once per cycle:
 
 ```
 notified = load_dedup_state(state_path)          # J5: read once
+webhook_url = ...                                 # loaded from DISCORD_WEBHOOK_URL at cycle start
 now = datetime.now(UTC)
 for event in events:
     result = classify_event(event, ...)          # existing phantom filter
@@ -265,9 +266,9 @@ for event in events:
     append_journal_entry(                         # J1, J2: always, append-only
         to_journal_entry(result, event.description, now), journal_path
     )
-    if is_notifiable(result, key, notified):      # J4, J6: reads only the set
-        send_notification(result)                 # the webhook piece (separate spec)
-        notified.add(key)                          # remember in RAM
+    if is_notifiable(result, key, notified):       # J4, J6: reads only the set
+        if send_notification(result, webhook_url): # deliver; True iff delivered (notification.md)
+            notified.add(key)                       # remember in RAM, only on a delivered notification
 save_dedup_state(notified, state_path)            # J5: write once
 ```
 
